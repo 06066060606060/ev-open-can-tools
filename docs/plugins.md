@@ -232,6 +232,18 @@ A plugin can contain multiple rules that target different CAN IDs or mux values.
 3. Scroll to the **Plugins** card
 4. Click **Upload .json** and select the file
 
+### Via paste JSON (offline)
+
+No internet, no file picker — works completely offline:
+
+1. Copy the plugin JSON content to your clipboard
+2. Open the dashboard at `192.168.4.1`
+3. Scroll to the **Plugins** card
+4. Paste the JSON into the **Paste JSON (offline)** textarea
+5. Click **Install from JSON**
+
+The JSON is validated client-side before sending. If the JSON is invalid, an error message is shown immediately.
+
 ### Managing plugins
 
 - **Enable/Disable**: Toggle the switch next to each plugin
@@ -247,6 +259,26 @@ Host your plugin JSON file anywhere accessible via HTTP/HTTPS:
   `https://raw.githubusercontent.com/user/repo/main/my-plugin.json`
 - **GitHub Gist**: Create a gist and use the raw URL
 - **Any web server**: Just serve the `.json` file with the correct content type
+
+## Plugin detail view
+
+Click on any installed plugin name in the dashboard to expand its detail view. This shows:
+
+- **CAN IDs** targeted by each rule (hex and decimal)
+- **Mux value** if the rule is mux-specific
+- **Operations** listed in execution order (e.g. `set_bit(46, true)`, `checksum(byte 7)`)
+
+This lets you inspect exactly what a plugin does before enabling it.
+
+## Conflict detection
+
+When a plugin targets a CAN ID that is also handled by the base firmware (e.g. 1021, 787, 880), the dashboard shows:
+
+- A **warning icon** (⚠) next to the plugin name
+- Per-rule **"Firmware overlap"** labels in the detail view
+- An explanation box: plugin rules run **after** the original handler — both will send modified frames on the bus
+
+This does not prevent the plugin from working. It is an informational warning so you understand that both the firmware and the plugin will independently modify and send frames for the same CAN ID.
 
 ## Important notes
 
