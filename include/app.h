@@ -52,6 +52,7 @@ template <typename Driver>
 static void appSetup(std::unique_ptr<Driver> drv, const char *readyMsg)
 {
     appHandler = std::make_unique<SelectedHandler>();
+    appActiveHandler = appHandler.get();
     delay(1500);
     Serial.begin(115200);
     unsigned long t0 = millis();

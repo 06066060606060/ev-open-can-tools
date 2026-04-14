@@ -414,11 +414,14 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
       <input class="sniff-input" id="plg-url" placeholder="Plugin JSON URL (https://...)" style="flex:1">
       <button class="sniff-btn" onclick="installPlugin()">Install</button>
     </div>
-    <div style="display:flex;gap:8px;align-items:center">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
       <input type="file" id="plg-file" accept=".json" onchange="uploadPlugin(this.files[0])" style="display:none">
       <button class="sniff-btn" onclick="$('plg-file').click()">Upload .json</button>
       <span style="font-size:11px;color:var(--tx3)" id="plg-status"></span>
     </div>
+    <div class="feat-name" style="margin-bottom:6px">Paste JSON (offline)</div>
+    <textarea id="plg-paste" placeholder='{"name":"...","version":"1.0","rules":[...]}' style="width:100%;height:80px;resize:vertical;background:var(--bg2);color:var(--tx);border:1px solid var(--bd);border-radius:6px;padding:8px;font-family:monospace;font-size:11px;box-sizing:border-box;margin-bottom:6px"></textarea>
+    <button class="sniff-btn" onclick="pastePlugin()">Install from JSON</button>
   </div>
 
   <div style="padding-top:12px;border-top:1px solid var(--bd)" id="plg-list">
@@ -768,6 +771,17 @@ async function uploadPlugin(file){
     else{$('plg-status').textContent=d.error||'Invalid JSON';$('plg-status').style.color='var(--err)';}
   }catch(e){$('plg-status').textContent='Error';$('plg-status').style.color='var(--err)';}
 }
+async function pastePlugin(){
+  const text=$('plg-paste').value.trim();
+  if(!text){$('plg-status').textContent='Paste JSON first';$('plg-status').style.color='var(--err)';return;}
+  try{JSON.parse(text);}catch(e){$('plg-status').textContent='Invalid JSON: '+e.message;$('plg-status').style.color='var(--err)';return;}
+  $('plg-status').textContent='Installing...';$('plg-status').style.color='var(--acc)';
+  try{const r=await fetch('/plugin_upload',{method:'POST',headers:{'Content-Type':'application/json'},body:text});
+    const d=await r.json();
+    if(d.ok){$('plg-paste').value='';$('plg-status').textContent='Installed!';$('plg-status').style.color='var(--ok)';pollPlugins();}
+    else{$('plg-status').textContent=d.error||'Invalid plugin';$('plg-status').style.color='var(--err)';}
+  }catch(e){$('plg-status').textContent='Connection error';$('plg-status').style.color='var(--err)';}
+}
 async function togglePlugin(idx){
   try{await fetch('/plugin_toggle',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'idx='+idx});pollPlugins();}catch(e){}
 }
@@ -775,12 +789,55 @@ async function removePlugin(idx){
   if(!confirm('Remove this plugin?'))return;
   try{await fetch('/plugin_remove',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'idx='+idx});pollPlugins();}catch(e){}
 }
+function fmtOp(o){
+  if(o.type==='set_bit') return 'set_bit('+o.bit+', '+(o.val?'true':'false')+')';
+  if(o.type==='checksum') return 'checksum(byte 7)';
+  if(o.type==='set_byte') return 'set_byte('+o.byte+', 0x'+o.val.toString(16)+', mask=0x'+o.mask.toString(16)+')';
+  if(o.type==='or_byte') return 'or_byte('+o.byte+', 0x'+o.val.toString(16)+')';
+  if(o.type==='and_byte') return 'and_byte('+o.byte+', 0x'+o.val.toString(16)+')';
+  return o.type;
+}
+function renderPluginDetails(details){
+  return '<div style="margin-top:6px;padding:8px;background:var(--bg2);border-radius:6px;font-size:11px;font-family:monospace">'
+    +details.map(r=>{
+      let hdr='<div style="margin-bottom:4px"><b>CAN '+r.hex+' ('+r.id+')</b>';
+      if(r.mux>=0) hdr+=' <span style="color:var(--acc)">mux='+r.mux+'</span>';
+      if(r.conflict) hdr+=' <span style="color:var(--err);font-weight:bold" title="This CAN ID is also handled by the base firmware">&#9888; Firmware overlap</span>';
+      hdr+='</div>';
+      let ops=r.ops.map(o=>'<div style="padding-left:12px;color:var(--tx2)">'+fmtOp(o)+'</div>').join('');
+      return hdr+ops;
+    }).join('<div style="border-top:1px solid var(--bd);margin:4px 0"></div>')
+    +'</div>';
+}
+function toggleDetails(idx){
+  var el=$('plg-det-'+idx);
+  if(el)el.style.display=el.style.display==='none'?'block':'none';
+}
 async function pollPlugins(){
   try{const r=await fetch('/plugins');const d=await r.json();
     $('plg-count').textContent=d.plugins.length+' installed';
     const el=$('plg-list');
     if(!d.plugins.length){el.innerHTML='<div style="font-size:12px;color:var(--tx3);text-align:center;padding:12px">No plugins installed</div>';}
-    else{el.innerHTML=d.plugins.map((p,i)=>'<div class="feat-row"><div class="feat-info"><div class="feat-name">'+p.name+' <span style="color:var(--tx3);font-size:11px">v'+p.version+'</span></div><div class="feat-desc">'+p.rules+' rule'+(p.rules!==1?'s':'')+(p.author?' &bull; '+p.author:'')+'</div></div><label class="tgl"><input type="checkbox" '+(p.enabled?'checked':'')+' onchange="togglePlugin('+i+')"><div class="tgl-track"><div class="tgl-thumb"></div></div></label><button onclick="removePlugin('+i+')" style="margin-left:8px;padding:4px 8px;border:1px solid var(--errBd);border-radius:5px;background:transparent;color:var(--err);cursor:pointer;font-size:10px;font-family:inherit">X</button></div>').join('');}
+    else{el.innerHTML=d.plugins.map((p,i)=>{
+      let hasConflict=p.details&&p.details.some(r=>r.conflict);
+      let row='<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--bd)">';
+      row+='<div class="feat-row"><div class="feat-info" style="cursor:pointer" onclick="toggleDetails('+i+')">';
+      row+='<div class="feat-name">'+p.name+' <span style="color:var(--tx3);font-size:11px">v'+p.version+'</span>';
+      if(hasConflict) row+=' <span style="color:var(--err);font-size:11px">&#9888;</span>';
+      row+='</div>';
+      row+='<div class="feat-desc">'+p.rules+' rule'+(p.rules!==1?'s':'')+(p.author?' &bull; '+p.author:'')+' &bull; <span style="color:var(--acc);cursor:pointer">details</span></div>';
+      row+='</div>';
+      row+='<label class="tgl"><input type="checkbox" '+(p.enabled?'checked':'')+' onchange="togglePlugin('+i+')"><div class="tgl-track"><div class="tgl-thumb"></div></div></label>';
+      row+='<button onclick="removePlugin('+i+')" style="margin-left:8px;padding:4px 8px;border:1px solid var(--errBd);border-radius:5px;background:transparent;color:var(--err);cursor:pointer;font-size:10px;font-family:inherit">X</button></div>';
+      if(p.details){
+        row+='<div id="plg-det-'+i+'" style="display:none">';
+        if(hasConflict) row+='<div style="margin-top:6px;padding:6px 8px;background:var(--errBg,#3a1a1a);border:1px solid var(--errBd);border-radius:6px;font-size:11px;color:var(--err)">&#9888; Some CAN IDs overlap with base firmware. Plugin rules run <b>after</b> the original handler. Both will send modified frames.</div>';
+        row+=renderPluginDetails(p.details);
+        row+='</div>';
+      }
+      row+='</div>';
+      return row;
+    }).join('');}
     if(d.wifi){
       if(d.wifi.connected){$('wifi-status').textContent='Connected: '+d.wifi.ip;$('wifi-status').style.color='var(--ok)';}
       else if(d.wifi.ssid){$('wifi-status').textContent='Connecting to '+d.wifi.ssid+'...';$('wifi-status').style.color='var(--acc)';}

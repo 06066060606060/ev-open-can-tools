@@ -796,6 +796,39 @@ static void dashReapplyFiltersWithPlugins()
     dashDriver->setFilters(mergedIds, count);
 }
 
+static const char *pluginOpName(PluginOpType t)
+{
+    switch (t)
+    {
+    case OP_SET_BIT:
+        return "set_bit";
+    case OP_SET_BYTE:
+        return "set_byte";
+    case OP_OR_BYTE:
+        return "or_byte";
+    case OP_AND_BYTE:
+        return "and_byte";
+    case OP_CHECKSUM:
+        return "checksum";
+    default:
+        return "?";
+    }
+}
+
+static bool isHandlerCanId(uint32_t id)
+{
+    if (!appActiveHandler)
+        return false;
+    const uint32_t *hIds = appActiveHandler->filterIds();
+    uint8_t hCount = appActiveHandler->filterIdCount();
+    for (uint8_t i = 0; i < hCount; i++)
+    {
+        if (hIds[i] == id)
+            return true;
+    }
+    return false;
+}
+
 static void handlePluginList()
 {
     String j = "{\"plugins\":[";
@@ -808,7 +841,41 @@ static void handlePluginList()
         j += ",\"author\":\"" + jsonEscape(pluginStore[i].author) + "\"";
         j += ",\"rules\":" + String(pluginStore[i].ruleCount);
         j += ",\"enabled\":" + String(pluginStore[i].enabled ? "true" : "false");
-        j += "}";
+
+        // Rule details
+        j += ",\"details\":[";
+        for (uint8_t r = 0; r < pluginStore[i].ruleCount; r++)
+        {
+            const PluginRule &rule = pluginStore[i].rules[r];
+            if (r)
+                j += ",";
+            j += "{\"id\":" + String(rule.canId);
+            j += ",\"hex\":\"0x" + String(rule.canId, HEX) + "\"";
+            j += ",\"mux\":" + String(rule.mux);
+            j += ",\"send\":" + String(rule.sendAfter ? "true" : "false");
+            j += ",\"conflict\":" + String(isHandlerCanId(rule.canId) ? "true" : "false");
+            j += ",\"ops\":[";
+            for (uint8_t o = 0; o < rule.opCount; o++)
+            {
+                const PluginOp &op = rule.ops[o];
+                if (o)
+                    j += ",";
+                j += "{\"type\":\"" + String(pluginOpName(op.type)) + "\"";
+                if (op.type == OP_SET_BIT)
+                    j += ",\"bit\":" + String(op.index) + ",\"val\":" + String(op.value);
+                else if (op.type == OP_CHECKSUM)
+                    j += "";
+                else
+                {
+                    j += ",\"byte\":" + String(op.index) + ",\"val\":" + String(op.value);
+                    if (op.type == OP_SET_BYTE)
+                        j += ",\"mask\":" + String(op.mask);
+                }
+                j += "}";
+            }
+            j += "]}";
+        }
+        j += "]}";
     }
     j += "],\"wifi\":{\"connected\":";
     j += staConnected ? "true" : "false";
