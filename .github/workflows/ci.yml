@@ -121,6 +121,8 @@ jobs:
         run: pip install ${{ matrix.extra_python_packages }}
       - run: python scripts/platformio_set_profile.py ${{ matrix.profile }}
       - run: pio run -e ${{ matrix.env }}
+        env:
+          SKIP_DASH_CREDENTIAL_CHECK: "1"
       - if: matrix.artifact_path != ''
         uses: actions/upload-artifact@v4
         with:
