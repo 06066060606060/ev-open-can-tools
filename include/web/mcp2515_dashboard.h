@@ -94,6 +94,7 @@ static char staSSID[33] = "";
 static char staPass[65] = "";
 static bool staConnected = false;
 static bool staStaticIP = false;
+static bool updateBetaChannel = false;
 static IPAddress staIP(0, 0, 0, 0);
 static IPAddress staGW(0, 0, 0, 0);
 static IPAddress staMask(255, 255, 255, 0);
@@ -325,6 +326,8 @@ static void dashLoadPrefs()
         staMask.fromString(prefs.getString("wifi_mask", "255.255.255.0"));
         staDNS.fromString(prefs.getString("wifi_dns", "0.0.0.0"));
     }
+
+    updateBetaChannel = prefs.getBool("update_beta", false);
 
     dashLog("[BOOT] Prefs loaded HW=" + String(hwMode) + " SP=" + String(sp));
     dashLog("[BOOT] canActive=YES bypassTlssc=" + String(bypassTlssc ? "YES" : "NO"));
@@ -1139,6 +1142,208 @@ static void handleWifiStatus()
     server.send(200, "application/json", j);
 }
 
+// ── OTA GitHub Update ───────────────────────────────────────────
+
+#ifndef FIRMWARE_VERSION
+#define FIRMWARE_VERSION "unknown"
+#endif
+
+static const char *GITHUB_REPO = "ev-open-can-tools/ev-open-can-tools";
+
+// Map driver type to release artifact filename
+static const char *getFirmwareArtifact()
+{
+#if defined(DRIVER_ESP32_EXT_MCP2515)
+    return "firmware-esp32-ext-mcp2515.bin";
+#else
+    return "firmware-esp32.bin";
+#endif
+}
+
+static void handleUpdateCheck()
+{
+    if (!staConnected)
+    {
+        server.send(400, "application/json", "{\"ok\":false,\"error\":\"WiFi not connected\"}");
+        return;
+    }
+
+    WiFiClientSecure client;
+    client.setInsecure();
+    HTTPClient http;
+
+    String url;
+    if (updateBetaChannel)
+        url = "https://api.github.com/repos/" + String(GITHUB_REPO) + "/releases?per_page=5";
+    else
+        url = "https://api.github.com/repos/" + String(GITHUB_REPO) + "/releases/latest";
+
+    http.begin(client, url);
+    http.addHeader("Accept", "application/vnd.github+json");
+    http.addHeader("User-Agent", "ESP32-OTA");
+    int code = http.GET();
+
+    if (code != 200)
+    {
+        http.end();
+        server.send(502, "application/json", "{\"ok\":false,\"error\":\"GitHub API error " + String(code) + "\"}");
+        return;
+    }
+
+    String payload = http.getString();
+    http.end();
+
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, payload);
+    if (err)
+    {
+        server.send(500, "application/json", "{\"ok\":false,\"error\":\"JSON parse error\"}");
+        return;
+    }
+
+    // Find the right release
+    JsonObject release;
+    if (updateBetaChannel)
+    {
+        JsonArray arr = doc.as<JsonArray>();
+        for (JsonObject r : arr)
+        {
+            release = r;
+            break; // first (newest) release
+        }
+    }
+    else
+    {
+        release = doc.as<JsonObject>();
+    }
+
+    if (release.isNull())
+    {
+        server.send(404, "application/json", "{\"ok\":false,\"error\":\"No release found\"}");
+        return;
+    }
+
+    String tagName = release["tag_name"] | "";
+    bool prerelease = release["prerelease"] | false;
+    String version = tagName;
+    if (version.startsWith("v"))
+        version = version.substring(1);
+
+    // Find the matching firmware asset
+    String downloadUrl = "";
+    const char *artifact = getFirmwareArtifact();
+    JsonArray assets = release["assets"];
+    for (JsonObject asset : assets)
+    {
+        String name = asset["name"] | "";
+        if (name == artifact)
+        {
+            downloadUrl = asset["browser_download_url"].as<String>();
+            break;
+        }
+    }
+
+    String j = "{\"ok\":true";
+    j += ",\"current\":\"" + jsonEscape(FIRMWARE_VERSION) + "\"";
+    j += ",\"latest\":\"" + jsonEscape(version.c_str()) + "\"";
+    j += ",\"tag\":\"" + jsonEscape(tagName.c_str()) + "\"";
+    j += ",\"prerelease\":" + String(prerelease ? "true" : "false");
+    j += ",\"artifact\":\"" + jsonEscape(artifact) + "\"";
+    j += ",\"url\":\"" + jsonEscape(downloadUrl.c_str()) + "\"";
+    j += ",\"update\":" + String(version != FIRMWARE_VERSION && downloadUrl.length() > 0 ? "true" : "false");
+    j += ",\"beta\":" + String(updateBetaChannel ? "true" : "false");
+    j += "}";
+    server.send(200, "application/json", j);
+}
+
+static void handleUpdateInstall()
+{
+    if (!staConnected)
+    {
+        server.send(400, "application/json", "{\"ok\":false,\"error\":\"WiFi not connected\"}");
+        return;
+    }
+
+    String url = server.arg("url");
+    if (url.length() == 0)
+    {
+        server.send(400, "application/json", "{\"ok\":false,\"error\":\"No URL provided\"}");
+        return;
+    }
+
+    dashLog("[OTA] Starting GitHub update from: " + url);
+    server.send(200, "application/json", "{\"ok\":true,\"msg\":\"Downloading and installing... Device will reboot.\"}");
+    delay(500);
+
+    WiFiClientSecure client;
+    client.setInsecure();
+
+    // Follow redirects — GitHub release assets redirect to S3
+    HTTPClient http;
+    http.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
+    http.begin(client, url);
+    http.addHeader("Accept", "application/octet-stream");
+    int code = http.GET();
+
+    if (code != 200)
+    {
+        dashLog("[OTA] Download failed: HTTP " + String(code));
+        http.end();
+        return;
+    }
+
+    int contentLength = http.getSize();
+    if (contentLength <= 0)
+    {
+        dashLog("[OTA] Invalid content length");
+        http.end();
+        return;
+    }
+
+    if (!Update.begin(contentLength))
+    {
+        dashLog("[OTA] Not enough space for update");
+        http.end();
+        return;
+    }
+
+    WiFiClient *stream = http.getStreamPtr();
+    size_t written = Update.writeStream(*stream);
+    http.end();
+
+    if (written != (size_t)contentLength)
+    {
+        dashLog("[OTA] Written " + String(written) + " of " + String(contentLength) + " bytes");
+        Update.abort();
+        return;
+    }
+
+    if (!Update.end())
+    {
+        dashLog("[OTA] Update finalize failed");
+        return;
+    }
+
+    dashLog("[OTA] Update successful! Rebooting...");
+    delay(1000);
+    ESP.restart();
+}
+
+static void handleUpdateBeta()
+{
+    if (server.hasArg("beta"))
+    {
+        updateBetaChannel = server.arg("beta") == "1";
+        prefs.begin(PREFS_NS, false);
+        prefs.putBool("update_beta", updateBetaChannel);
+        prefs.end();
+        dashLog("[OTA] Channel: " + String(updateBetaChannel ? "beta" : "stable"));
+    }
+    String j = "{\"ok\":true,\"beta\":" + String(updateBetaChannel ? "true" : "false");
+    j += ",\"version\":\"" + jsonEscape(FIRMWARE_VERSION) + "\"}";
+    server.send(200, "application/json", j);
+}
+
 // ── Plugin frame callback wrapper ───────────────────────────────
 
 static void dashPluginProcess(const CanFrame &frame, CanDriver &driver)
@@ -1279,6 +1484,9 @@ static void mcpDashboardSetup(CarManagerBase *handler, CanDriver *driver)
     server.on("/wifi_scan", HTTP_GET, handleWifiScan);
     server.on("/wifi_config", HTTP_POST, handleWifiConfig);
     server.on("/wifi_status", HTTP_GET, handleWifiStatus);
+    server.on("/update_check", HTTP_GET, handleUpdateCheck);
+    server.on("/update_install", HTTP_POST, handleUpdateInstall);
+    server.on("/update_beta", HTTP_POST, handleUpdateBeta);
 
     server.begin();
     Serial.println("[WEB] Dashboard: http://192.168.4.1");

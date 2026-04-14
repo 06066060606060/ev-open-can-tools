@@ -450,6 +450,35 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 </div>
 
 <div class="card">
+  <div class="card-hdr">
+    <div class="card-title">Firmware Update</div>
+    <div class="card-meta" id="fw-ver"></div>
+  </div>
+  <div style="margin-bottom:10px">
+    <div class="feat-row">
+      <div class="feat-info">
+        <div class="feat-name">Beta Channel</div>
+        <div class="feat-desc">Include pre-release / beta firmware versions</div>
+      </div>
+      <label class="tgl"><input type="checkbox" id="beta-tgl" onchange="toggleBeta()"><div class="tgl-track"><div class="tgl-thumb"></div></div></label>
+    </div>
+  </div>
+  <div style="display:flex;gap:6px;align-items:center">
+    <button class="sniff-btn" onclick="checkUpdate()" id="upd-check-btn">Check for Updates</button>
+    <span style="font-size:11px;color:var(--tx3)" id="upd-status"></span>
+  </div>
+  <div id="upd-info" style="display:none;margin-top:10px;padding:10px;background:var(--bg2);border-radius:6px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:13px;font-weight:600" id="upd-ver"></div>
+        <div style="font-size:11px;color:var(--tx3)" id="upd-detail"></div>
+      </div>
+      <button class="sniff-btn" onclick="installUpdate()" id="upd-install-btn" style="background:var(--ok);color:#fff;border-color:var(--ok)">Install</button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
   <div class="card-hdr"><div class="card-title">Live Log</div></div>
   <div class="log-box" id="log">Waiting...</div>
 </div>
@@ -900,8 +929,50 @@ async function pollPlugins(){
   }catch(e){}
 }
 
+// ── Firmware update ──
+var pendingUpdateUrl='';
+async function toggleBeta(){
+  const beta=$('beta-tgl').checked?'1':'0';
+  try{await fetch('/update_beta',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'beta='+beta});}catch(e){}
+  $('upd-info').style.display='none';$('upd-status').textContent='';
+}
+async function checkUpdate(){
+  $('upd-check-btn').disabled=true;$('upd-status').textContent='Checking...';$('upd-status').style.color='var(--acc)';
+  $('upd-info').style.display='none';pendingUpdateUrl='';
+  try{const r=await fetch('/update_check');const d=await r.json();
+    if(!d.ok){$('upd-status').textContent=d.error||'Error';$('upd-status').style.color='var(--err)';$('upd-check-btn').disabled=false;return;}
+    $('fw-ver').textContent='v'+d.current;
+    if(d.update){
+      $('upd-status').textContent='Update available!';$('upd-status').style.color='var(--ok)';
+      $('upd-ver').textContent='v'+d.latest+(d.prerelease?' (beta)':'');
+      $('upd-detail').textContent=d.artifact+' \u2022 '+d.tag;
+      pendingUpdateUrl=d.url;
+      $('upd-info').style.display='block';
+    }else{
+      $('upd-status').textContent='Up to date (v'+d.current+')';$('upd-status').style.color='var(--ok)';
+    }
+  }catch(e){$('upd-status').textContent='Connection error';$('upd-status').style.color='var(--err)';}
+  $('upd-check-btn').disabled=false;
+}
+async function installUpdate(){
+  if(!pendingUpdateUrl){$('upd-status').textContent='No update URL';return;}
+  if(!confirm('Install firmware update? The device will reboot.'))return;
+  $('upd-install-btn').disabled=true;$('upd-status').textContent='Downloading & installing...';$('upd-status').style.color='var(--acc)';
+  try{await fetch('/update_install',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'url='+encodeURIComponent(pendingUpdateUrl)});
+    $('upd-status').textContent='Update installed! Rebooting...';$('upd-status').style.color='var(--ok)';
+    setTimeout(()=>location.reload(),15000);
+  }catch(e){$('upd-status').textContent='Update failed';$('upd-status').style.color='var(--err)';$('upd-install-btn').disabled=false;}
+}
+async function loadUpdateInfo(){
+  try{const r=await fetch('/update_beta',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'noop=1'});
+    const d=await r.json();
+    if(d.version)$('fw-ver').textContent='v'+d.version;
+    $('beta-tgl').checked=!!d.beta;
+  }catch(e){}
+}
+
 setInterval(poll,2000);setInterval(pollLog,3000);setInterval(pollSniffer,1000);setInterval(pollPlugins,10000);setInterval(loadWifiStatus,10000);
-updateHW4(1);buildPills();poll();pollLog();pollSniffer();pollRec();pollPlugins();loadWifiStatus();
+updateHW4(1);buildPills();poll();pollLog();pollSniffer();pollRec();pollPlugins();loadWifiStatus();loadUpdateInfo();
 </script>
 </body>
 </html>
