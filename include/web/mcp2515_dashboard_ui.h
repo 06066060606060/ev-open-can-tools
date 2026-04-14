@@ -392,6 +392,41 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 </div>
 
 <div class="card">
+  <div class="card-hdr">
+    <div class="card-title">Plugins</div>
+    <div class="card-meta" id="plg-count">0 installed</div>
+  </div>
+
+  <div style="margin-bottom:14px">
+    <div class="feat-name" style="margin-bottom:8px">WiFi Internet</div>
+    <div class="feat-desc" style="margin-bottom:8px">Connect to your home WiFi for plugin downloads</div>
+    <div style="display:flex;gap:6px;margin-bottom:6px">
+      <input class="sniff-input" id="wifi-ssid" placeholder="WiFi SSID" style="flex:1">
+      <input class="sniff-input" id="wifi-pass" placeholder="Password" type="password" style="flex:1">
+      <button class="sniff-btn" onclick="saveWifi()">Connect</button>
+    </div>
+    <div style="font-size:11px;color:var(--tx3)" id="wifi-status">Not configured</div>
+  </div>
+
+  <div style="padding-top:12px;border-top:1px solid var(--bd);margin-bottom:14px">
+    <div class="feat-name" style="margin-bottom:8px">Install Plugin</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <input class="sniff-input" id="plg-url" placeholder="Plugin JSON URL (https://...)" style="flex:1">
+      <button class="sniff-btn" onclick="installPlugin()">Install</button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="file" id="plg-file" accept=".json" onchange="uploadPlugin(this.files[0])" style="display:none">
+      <button class="sniff-btn" onclick="$('plg-file').click()">Upload .json</button>
+      <span style="font-size:11px;color:var(--tx3)" id="plg-status"></span>
+    </div>
+  </div>
+
+  <div style="padding-top:12px;border-top:1px solid var(--bd)" id="plg-list">
+    <div style="font-size:12px;color:var(--tx3);text-align:center;padding:12px">No plugins installed</div>
+  </div>
+</div>
+
+<div class="card">
   <div class="card-hdr"><div class="card-title">Live Log</div></div>
   <div class="log-box" id="log">Waiting...</div>
 </div>
@@ -704,8 +739,59 @@ async function pollRec(){
   }catch(e){}
 }
 
-setInterval(poll,2000);setInterval(pollLog,3000);setInterval(pollSniffer,1000);
-updateHW4(1);buildPills();poll();pollLog();pollSniffer();pollRec();
+// ── Plugin management ──
+async function saveWifi(){
+  const ssid=$('wifi-ssid').value,pass=$('wifi-pass').value;
+  if(!ssid){$('wifi-status').textContent='Enter SSID';return;}
+  const body='ssid='+encodeURIComponent(ssid)+'&pass='+encodeURIComponent(pass);
+  try{await fetch('/wifi_config',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+    $('wifi-status').textContent='Connecting to '+ssid+'...';$('wifi-status').style.color='var(--acc)';
+  }catch(e){$('wifi-status').textContent='Error';$('wifi-status').style.color='var(--err)';}
+}
+async function installPlugin(){
+  const url=$('plg-url').value;
+  if(!url){$('plg-status').textContent='Enter URL';return;}
+  $('plg-status').textContent='Downloading...';$('plg-status').style.color='var(--acc)';
+  try{const r=await fetch('/plugin_install',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'url='+encodeURIComponent(url)});
+    const d=await r.json();
+    if(d.ok){$('plg-url').value='';$('plg-status').textContent='Installed!';$('plg-status').style.color='var(--ok)';pollPlugins();}
+    else{$('plg-status').textContent=d.error||'Error';$('plg-status').style.color='var(--err)';}
+  }catch(e){$('plg-status').textContent='Connection error';$('plg-status').style.color='var(--err)';}
+}
+async function uploadPlugin(file){
+  if(!file)return;
+  $('plg-status').textContent='Uploading...';$('plg-status').style.color='var(--acc)';
+  try{const text=await file.text();
+    const r=await fetch('/plugin_upload',{method:'POST',headers:{'Content-Type':'application/json'},body:text});
+    const d=await r.json();
+    if(d.ok){$('plg-status').textContent='Installed!';$('plg-status').style.color='var(--ok)';pollPlugins();}
+    else{$('plg-status').textContent=d.error||'Invalid JSON';$('plg-status').style.color='var(--err)';}
+  }catch(e){$('plg-status').textContent='Error';$('plg-status').style.color='var(--err)';}
+}
+async function togglePlugin(idx){
+  try{await fetch('/plugin_toggle',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'idx='+idx});pollPlugins();}catch(e){}
+}
+async function removePlugin(idx){
+  if(!confirm('Remove this plugin?'))return;
+  try{await fetch('/plugin_remove',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'idx='+idx});pollPlugins();}catch(e){}
+}
+async function pollPlugins(){
+  try{const r=await fetch('/plugins');const d=await r.json();
+    $('plg-count').textContent=d.plugins.length+' installed';
+    const el=$('plg-list');
+    if(!d.plugins.length){el.innerHTML='<div style="font-size:12px;color:var(--tx3);text-align:center;padding:12px">No plugins installed</div>';}
+    else{el.innerHTML=d.plugins.map((p,i)=>'<div class="feat-row"><div class="feat-info"><div class="feat-name">'+p.name+' <span style="color:var(--tx3);font-size:11px">v'+p.version+'</span></div><div class="feat-desc">'+p.rules+' rule'+(p.rules!==1?'s':'')+(p.author?' &bull; '+p.author:'')+'</div></div><label class="tgl"><input type="checkbox" '+(p.enabled?'checked':'')+' onchange="togglePlugin('+i+')"><div class="tgl-track"><div class="tgl-thumb"></div></div></label><button onclick="removePlugin('+i+')" style="margin-left:8px;padding:4px 8px;border:1px solid var(--errBd);border-radius:5px;background:transparent;color:var(--err);cursor:pointer;font-size:10px;font-family:inherit">X</button></div>').join('');}
+    if(d.wifi){
+      if(d.wifi.connected){$('wifi-status').textContent='Connected: '+d.wifi.ip;$('wifi-status').style.color='var(--ok)';}
+      else if(d.wifi.ssid){$('wifi-status').textContent='Connecting to '+d.wifi.ssid+'...';$('wifi-status').style.color='var(--acc)';}
+      else{$('wifi-status').textContent='Not configured';$('wifi-status').style.color='';}
+      if(d.wifi.ssid)$('wifi-ssid').value=d.wifi.ssid;
+    }
+  }catch(e){}
+}
+
+setInterval(poll,2000);setInterval(pollLog,3000);setInterval(pollSniffer,1000);setInterval(pollPlugins,10000);
+updateHW4(1);buildPills();poll();pollLog();pollSniffer();pollRec();pollPlugins();
 </script>
 </body>
 </html>
