@@ -63,7 +63,7 @@ Operations are applied in order on a **copy** of the original frame. The built-i
 | Param | Type | Description |
 |-------|------|-------------|
 | `bit` | 0-63 | Bit position in the 8-byte data field. Bit 0 = byte 0 bit 0, bit 8 = byte 1 bit 0, etc. |
-| `val` | 0 or 1 | Value to set. Defaults to `1`. |
+| `val` | `0`/`1` or `false`/`true` | Value to set. Defaults to `1`. |
 
 #### `set_byte` — Set a byte value with optional mask
 
