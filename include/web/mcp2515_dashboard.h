@@ -1432,7 +1432,7 @@ static void handleUpdateCheck()
 
     String url;
     if (updateBetaChannel)
-        url = "https://api.github.com/repos/" + String(GITHUB_REPO) + "/releases?per_page=5";
+        url = "https://api.github.com/repos/" + String(GITHUB_REPO) + "/releases?per_page=1";
     else
         url = "https://api.github.com/repos/" + String(GITHUB_REPO) + "/releases/latest";
 
@@ -1602,7 +1602,7 @@ static void performAutoUpdate()
 
     String url;
     if (updateBetaChannel)
-        url = "https://api.github.com/repos/" + String(GITHUB_REPO) + "/releases?per_page=5";
+        url = "https://api.github.com/repos/" + String(GITHUB_REPO) + "/releases?per_page=1";
     else
         url = "https://api.github.com/repos/" + String(GITHUB_REPO) + "/releases/latest";
 
