@@ -22,10 +22,6 @@ OPTIONAL_DEFINES = (
     "ENHANCED_AUTOPILOT",
 )
 CREDENTIAL_DEFINES = ("DASH_SSID", "DASH_PASS", "DASH_OTA_USER", "DASH_OTA_PASS")
-CREDENTIAL_PLACEHOLDERS = {
-    "DASH_PASS": "changeme",
-    "DASH_OTA_PASS": "changeme",
-}
 CONFIG_RELATIVE_PATH = Path("platformio_profile.h")
 
 
@@ -150,32 +146,8 @@ uses_dashboard = "ESP32_DASHBOARD" in project_defines
 if uses_dashboard:
     credentials = _string_define_values(config_text, CREDENTIAL_DEFINES)
 
-    skip_check = os.getenv("SKIP_DASH_CREDENTIAL_CHECK", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
-    if not skip_check:
-        errors = []
-        for macro, placeholder in CREDENTIAL_PLACEHOLDERS.items():
-            val = credentials.get(macro, "")
-            if val == placeholder:
-                errors.append(
-                    f'  {macro} is still the default placeholder "{placeholder}"'
-                )
-
-        if errors:
-            print("\n" + "=" * 60)
-            print("BUILD ERROR: Default dashboard credentials detected.")
-            print(
-                f"Edit {CONFIG_RELATIVE_PATH.as_posix()} and change these values before building:"
-            )
-            for e in errors:
-                print(e)
-            print("=" * 60 + "\n")
-            env.Exit(1)
-
+    # Default credentials ("changeme") are allowed — users change them via the
+    # dashboard WiFi Hotspot card at runtime (persisted in NVS).
     for cred_name in CREDENTIAL_DEFINES:
         if cred_name in credentials:
             env.Append(CPPDEFINES=[(cred_name, f'\\"{credentials[cred_name]}\\"')])

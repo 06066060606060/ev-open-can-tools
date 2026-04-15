@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Migrate esp32_feather_v2_mcp2515 to new mcp2515 driver and web ui
 
+## [2.2.0-beta.4] - 2026-04-15
+
+### Changed
+- Default dashboard credentials (`changeme`) are now allowed at build time. Users are expected to change the WiFi AP password and OTA credentials at runtime via the dashboard WiFi Hotspot card (persisted in NVS, OTA-safe)
+- Build no longer fails when `DASH_PASS` / `DASH_OTA_PASS` are left at the default `changeme` placeholder
+
+### Removed
+- Nag Killer toggle removed from the dashboard Features card. The underlying `NAG_KILLER` build flag remains available for advanced users who want to compile it in
+
 ## [2.2.0-beta.3] - 2026-04-15
 
 ### Fixed

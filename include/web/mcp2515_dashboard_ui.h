@@ -286,15 +286,6 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
       <div class="tgl-track"><div class="tgl-thumb"></div></div></label>
   </div>
 
-  <div class="feat-row">
-    <div class="feat-info">
-      <div class="feat-name">Nag Killer</div>
-      <div class="feat-desc">Echo CAN 880 counter+1 to suppress hands-on-wheel nag</div>
-    </div>
-    <label class="tgl"><input type="checkbox" id="tgl-nk" onchange="pushFeat()">
-      <div class="tgl-track"><div class="tgl-thumb"></div></div></label>
-  </div>
-
   <div class="hw4-only" style="padding:12px 0;border-bottom:1px solid var(--bd)">
     <div class="feat-info" style="margin-bottom:8px">
       <div class="feat-name">Speed Offset</div>
@@ -652,7 +643,6 @@ async function pushFeat(){
     +'&summon='+($('tgl-summon').checked?'1':'0')
     +'&isa='+($('tgl-isa').checked?'1':'0')
     +'&evd='+($('tgl-evd').checked?'1':'0')
-    +'&nk='+($('tgl-nk').checked?'1':'0')
     +'&fAD='+($('tgl-fAD').checked?'1':'0')
     +'&eprn='+($('tgl-eprn').checked?'1':'0')
     +'&h4o='+state.h4o;
@@ -814,7 +804,7 @@ async function poll(){
     state.hw=d.hw;state.sp=d.sp;state.can=d.ci;
     $('btn-resume').style.display=d.ci?'none':'';
     updSeg($('hw-seg'),d.hw,'hw-btn');buildPills();updateHW4(d.hw);
-    if(d.feat){$('tgl-AD').checked=d.feat.AD;$('tgl-nag').checked=d.feat.nag;$('tgl-summon').checked=d.feat.summon;$('tgl-isa').checked=d.feat.isa;$('tgl-evd').checked=d.feat.evd;$('tgl-nk').checked=d.feat.nk;if(typeof d.feat.h4o!=='undefined'){state.h4o=d.feat.h4o;buildPills();}if(typeof d.feat.spl!=='undefined'){state.spl=d.feat.spl;}}
+    if(d.feat){$('tgl-AD').checked=d.feat.AD;$('tgl-nag').checked=d.feat.nag;$('tgl-summon').checked=d.feat.summon;$('tgl-isa').checked=d.feat.isa;$('tgl-evd').checked=d.feat.evd;if(typeof d.feat.h4o!=='undefined'){state.h4o=d.feat.h4o;buildPills();}if(typeof d.feat.spl!=='undefined'){state.spl=d.feat.spl;}}
     if(typeof d.fAD!=='undefined')$('tgl-fAD').checked=d.fAD;
     if(typeof d.eprn!=='undefined')$('tgl-eprn').checked=d.eprn;
   }catch(e){}
