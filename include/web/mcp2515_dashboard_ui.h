@@ -476,6 +476,33 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 
 <div class="card">
   <div class="card-hdr">
+    <div class="card-title">Plugin Editor <span onclick="toggleInfo('pe-info')" style="color:var(--tx3);cursor:pointer;font-size:12px;margin-left:4px" title="About the editor">&#9432;</span></div>
+    <div class="card-meta" id="pe-count">0 rules</div>
+  </div>
+  <div id="pe-info" style="display:none;margin-bottom:10px;padding:10px;background:var(--bg2);border:1px solid var(--bd);border-radius:6px;font-size:12px;color:var(--tx3);line-height:1.5">
+    Build a plugin via form &mdash; no JSON writing needed. Add rules (one per CAN ID + optional mux), then operations per rule. The JSON preview updates live. Click Install to deploy, or Download to save the plugin file.
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 90px;gap:6px;margin-bottom:10px">
+    <input class="sniff-input" id="pe-name" placeholder="Plugin name" maxlength="31" oninput="peRenderPreview()">
+    <input class="sniff-input" id="pe-author" placeholder="Author (optional)" oninput="peRenderPreview()">
+    <input class="sniff-input" id="pe-version" placeholder="Version" value="1.0" oninput="peRenderPreview()">
+  </div>
+  <div id="pe-rules"></div>
+  <button class="sniff-btn" onclick="peAddRule()" style="margin-top:6px">+ Add Rule</button>
+  <details style="margin-top:10px">
+    <summary style="font-size:11px;color:var(--acc);cursor:pointer;user-select:none">JSON Preview</summary>
+    <pre id="pe-preview" style="max-height:200px;overflow:auto;background:var(--bg2);border:1px solid var(--bd);border-radius:6px;padding:8px;font-size:11px;color:var(--tx2);margin-top:6px;white-space:pre-wrap;word-break:break-all"></pre>
+  </details>
+  <div style="display:flex;gap:6px;margin-top:10px">
+    <button class="sniff-btn" onclick="peInstall()">Install</button>
+    <button class="sniff-btn" onclick="peDownload()">Download JSON</button>
+    <button class="sniff-btn" onclick="peReset()">Reset</button>
+  </div>
+  <div id="pe-status" style="font-size:11px;margin-top:6px;color:var(--tx3)"></div>
+</div>
+
+<div class="card">
+  <div class="card-hdr">
     <div class="card-title">Firmware Update</div>
     <div class="card-meta" id="fw-ver"></div>
   </div>
@@ -1114,8 +1141,164 @@ async function importSettings(ev){
   ev.target.value='';
 }
 
+// ── Plugin Editor ────────────────────────────────────────────────
+let peState={rules:[]};
+function peGetMeta(){return{name:($('pe-name').value||'').trim(),version:($('pe-version').value||'1.0').trim(),author:($('pe-author').value||'').trim()};}
+function peParseInt(s,def){if(typeof s==='number')return s;if(s===''||s==null)return def;s=String(s).trim();let n=s.toLowerCase().startsWith('0x')?parseInt(s,16):parseInt(s,10);return isNaN(n)?def:n;}
+function peSetStatus(msg,kind){const el=$('pe-status');el.textContent=msg;el.style.color=kind==='ok'?'var(--ok)':kind==='err'?'var(--err)':kind==='acc'?'var(--acc)':'var(--tx3)';}
+function peAddRule(){if(peState.rules.length>=16){peSetStatus('Max 16 rules per plugin','err');return;}peState.rules.push({id:0,mux:-1,send:true,ops:[]});peRender();}
+function peRemoveRule(i){peState.rules.splice(i,1);peRender();}
+function peAddOp(i,type){const r=peState.rules[i];if(!r)return;if(r.ops.length>=8){peSetStatus('Max 8 ops per rule','err');return;}
+  const op={type:type};
+  if(type==='set_bit'){op.bit=0;op.val=1;}
+  else if(type==='set_byte'){op.byte=0;op.val=0;op.mask=255;}
+  else if(type==='or_byte'){op.byte=0;op.val=0;}
+  else if(type==='and_byte'){op.byte=0;op.val=255;}
+  r.ops.push(op);peRender();}
+function peRemoveOp(i,j){peState.rules[i].ops.splice(j,1);peRender();}
+function peUpdateField(i,j,field,value){
+  if(j<0){const r=peState.rules[i];if(!r)return;
+    if(field==='id')r.id=peParseInt(value,0);
+    else if(field==='mux'){r.mux=value===''?-1:peParseInt(value,-1);}
+    else if(field==='send')r.send=!!value;
+    peRender();return;
+  }
+  const op=peState.rules[i].ops[j];if(!op)return;
+  if(field==='type'){const nt=value;Object.keys(op).forEach(k=>{if(k!=='type')delete op[k];});op.type=nt;
+    if(nt==='set_bit'){op.bit=0;op.val=1;}
+    else if(nt==='set_byte'){op.byte=0;op.val=0;op.mask=255;}
+    else if(nt==='or_byte'){op.byte=0;op.val=0;}
+    else if(nt==='and_byte'){op.byte=0;op.val=255;}
+    peRender();return;
+  }
+  if(field==='bit')op.bit=Math.max(0,Math.min(63,peParseInt(value,0)));
+  else if(field==='byte')op.byte=Math.max(0,Math.min(7,peParseInt(value,0)));
+  else if(field==='val')op.val=Math.max(0,Math.min(op.type==='set_bit'?1:255,peParseInt(value,0)));
+  else if(field==='mask')op.mask=Math.max(0,Math.min(255,peParseInt(value,255)));
+  peRenderPreview();
+}
+function peOpRow(i,j,op){
+  const sel='<select class="sniff-input" style="width:90px" onchange="peUpdateField('+i+','+j+',\'type\',this.value)">'+
+    ['set_bit','set_byte','or_byte','and_byte','checksum'].map(t=>'<option value="'+t+'"'+(op.type===t?' selected':'')+'>'+t+'</option>').join('')+'</select>';
+  let fields='';
+  if(op.type==='set_bit'){
+    fields='<input class="sniff-input" style="width:55px" type="number" min="0" max="63" value="'+op.bit+'" title="bit (0-63)" onchange="peUpdateField('+i+','+j+',\'bit\',this.value)">'+
+      '<select class="sniff-input" style="width:80px" onchange="peUpdateField('+i+','+j+',\'val\',this.value)"><option value="1"'+(op.val?' selected':'')+'>set (1)</option><option value="0"'+(!op.val?' selected':'')+'>clear (0)</option></select>';
+  }else if(op.type==='set_byte'){
+    fields='<input class="sniff-input" style="width:48px" type="number" min="0" max="7" value="'+op.byte+'" title="byte (0-7)" onchange="peUpdateField('+i+','+j+',\'byte\',this.value)">'+
+      '<input class="sniff-input" style="width:70px" value="0x'+((op.val||0)&255).toString(16)+'" title="val (0-255, hex or dec)" onchange="peUpdateField('+i+','+j+',\'val\',this.value)">'+
+      '<input class="sniff-input" style="width:70px" value="0x'+(op.mask===undefined?255:op.mask).toString(16)+'" title="mask (0-255)" onchange="peUpdateField('+i+','+j+',\'mask\',this.value)">';
+  }else if(op.type==='or_byte'||op.type==='and_byte'){
+    fields='<input class="sniff-input" style="width:48px" type="number" min="0" max="7" value="'+op.byte+'" title="byte (0-7)" onchange="peUpdateField('+i+','+j+',\'byte\',this.value)">'+
+      '<input class="sniff-input" style="width:70px" value="0x'+((op.val||0)&255).toString(16)+'" title="val (0-255)" onchange="peUpdateField('+i+','+j+',\'val\',this.value)">';
+  }else{
+    fields='<span style="font-size:11px;color:var(--tx3);align-self:center;padding:0 4px">recalc byte 7 checksum</span>';
+  }
+  return '<div style="display:flex;gap:4px;align-items:center;margin-bottom:4px;flex-wrap:wrap">'+sel+fields+'<button class="sniff-btn" style="margin-left:auto;padding:2px 8px" onclick="peRemoveOp('+i+','+j+')" title="Remove op">&times;</button></div>';
+}
+function peRuleBlock(i,r){
+  const ops=r.ops.length?r.ops.map((op,j)=>peOpRow(i,j,op)).join(''):'<div style="font-size:11px;color:var(--tx3);padding:4px 0">No ops &mdash; add one below</div>';
+  const hex=r.id?'0x'+r.id.toString(16).toUpperCase():'?';
+  return '<details open style="margin-bottom:10px;border:1px solid var(--bd);border-radius:6px;padding:8px;background:var(--bg2)">'+
+    '<summary style="cursor:pointer;font-size:12px;color:var(--tx);user-select:none">Rule '+(i+1)+' &mdash; CAN '+hex+(r.id?' ('+r.id+')':'')+(r.mux>=0?' mux='+r.mux:'')+' &middot; '+r.ops.length+' op'+(r.ops.length===1?'':'s')+'</summary>'+
+    '<div style="display:flex;gap:6px;margin:8px 0;flex-wrap:wrap">'+
+      '<input class="sniff-input" style="width:100px" type="number" min="0" max="2047" value="'+(r.id||'')+'" placeholder="CAN ID" onchange="peUpdateField('+i+',-1,\'id\',this.value)">'+
+      '<input class="sniff-input" style="width:100px" type="number" min="-1" max="7" value="'+r.mux+'" placeholder="mux (-1=any)" onchange="peUpdateField('+i+',-1,\'mux\',this.value)">'+
+      '<label style="font-size:11px;color:var(--tx3);display:flex;align-items:center;gap:4px"><input type="checkbox"'+(r.send?' checked':'')+' onchange="peUpdateField('+i+',-1,\'send\',this.checked)"> send</label>'+
+      '<button class="sniff-btn" style="margin-left:auto" onclick="peRemoveRule('+i+')">Remove Rule</button>'+
+    '</div>'+
+    ops+
+    '<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">'+
+      '<button class="sniff-btn" onclick="peAddOp('+i+',\'set_bit\')">+ set_bit</button>'+
+      '<button class="sniff-btn" onclick="peAddOp('+i+',\'set_byte\')">+ set_byte</button>'+
+      '<button class="sniff-btn" onclick="peAddOp('+i+',\'or_byte\')">+ or_byte</button>'+
+      '<button class="sniff-btn" onclick="peAddOp('+i+',\'and_byte\')">+ and_byte</button>'+
+      '<button class="sniff-btn" onclick="peAddOp('+i+',\'checksum\')">+ checksum</button>'+
+    '</div>'+
+  '</details>';
+}
+function peRender(){
+  const el=$('pe-rules');
+  if(!peState.rules.length){el.innerHTML='<div style="font-size:12px;color:var(--tx3);text-align:center;padding:12px;border:1px dashed var(--bd);border-radius:6px">No rules yet. Click &ldquo;+ Add Rule&rdquo; below.</div>';}
+  else{el.innerHTML=peState.rules.map((r,i)=>peRuleBlock(i,r)).join('');}
+  $('pe-count').textContent=peState.rules.length+' rule'+(peState.rules.length===1?'':'s');
+  peRenderPreview();
+}
+function peBuildObj(){
+  const meta=peGetMeta();
+  const obj={name:meta.name||'Untitled',version:meta.version||'1.0'};
+  if(meta.author)obj.author=meta.author;
+  obj.rules=peState.rules.map(r=>{
+    const out={id:r.id|0};
+    if(r.mux>=0)out.mux=r.mux|0;
+    if(r.send===false)out.send=false;
+    out.ops=r.ops.map(op=>{
+      const o={type:op.type};
+      if(op.type==='set_bit'){o.bit=op.bit|0;o.val=op.val?1:0;}
+      else if(op.type==='set_byte'){o.byte=op.byte|0;o.val=(op.val|0)&255;if(op.mask!==undefined&&op.mask!==255)o.mask=op.mask|0;}
+      else if(op.type==='or_byte'||op.type==='and_byte'){o.byte=op.byte|0;o.val=(op.val|0)&255;}
+      return o;
+    });
+    return out;
+  });
+  return obj;
+}
+function peRenderPreview(){$('pe-preview').textContent=JSON.stringify(peBuildObj(),null,2);}
+function peValidate(){
+  const meta=peGetMeta();
+  if(!meta.name)return 'Plugin name required';
+  if(meta.name.length>31)return 'Name too long (max 31)';
+  if(!peState.rules.length)return 'Add at least one rule';
+  for(let i=0;i<peState.rules.length;i++){
+    const r=peState.rules[i];
+    if(!r.id||r.id<1||r.id>2047)return 'Rule '+(i+1)+': CAN ID must be 1-2047';
+    if(r.mux<-1||r.mux>7)return 'Rule '+(i+1)+': mux must be -1..7';
+    if(!r.ops.length)return 'Rule '+(i+1)+': add at least one op';
+    for(let j=0;j<r.ops.length;j++){
+      const op=r.ops[j];
+      if(op.type==='set_bit'){if(op.bit<0||op.bit>63)return 'Rule '+(i+1)+' op '+(j+1)+': bit must be 0-63';}
+      else if(op.type==='set_byte'||op.type==='or_byte'||op.type==='and_byte'){
+        if(op.byte<0||op.byte>7)return 'Rule '+(i+1)+' op '+(j+1)+': byte must be 0-7';
+        if(op.val<0||op.val>255)return 'Rule '+(i+1)+' op '+(j+1)+': val must be 0-255';
+      }
+    }
+  }
+  return null;
+}
+async function peInstall(){
+  const err=peValidate();
+  if(err){peSetStatus(err,'err');return;}
+  const obj=peBuildObj();
+  try{const r=await fetch('/plugins');const d=await r.json();
+    if(d.plugins&&d.plugins.some(p=>p.name===obj.name)){
+      if(!confirm('A plugin named "'+obj.name+'" already exists. Overwrite?'))return;
+    }
+  }catch(e){}
+  peSetStatus('Installing...','acc');
+  try{const r=await fetch('/plugin_upload',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(obj)});
+    const d=await r.json();
+    if(d.ok){peSetStatus('Installed!','ok');pollPlugins();}
+    else{peSetStatus(d.error||'Install failed','err');}
+  }catch(e){peSetStatus('Connection error','err');}
+}
+function peDownload(){
+  const err=peValidate();
+  if(err){peSetStatus(err,'err');return;}
+  const obj=peBuildObj();
+  const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=(obj.name||'plugin').replace(/[^A-Za-z0-9_-]/g,'_').toLowerCase()+'.json';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+  peSetStatus('Downloaded','ok');
+}
+function peReset(){
+  if(peState.rules.length&&!confirm('Discard current editor contents?'))return;
+  peState={rules:[]};
+  $('pe-name').value='';$('pe-author').value='';$('pe-version').value='1.0';
+  peRender();peSetStatus('','');
+}
+
 setInterval(poll,2000);setInterval(pollLog,3000);setInterval(pollSniffer,1000);setInterval(pollPlugins,10000);setInterval(loadWifiStatus,10000);setInterval(loadApStatus,10000);
-updateHW4(1);buildPills();poll();pollLog();pollSniffer();pollRec();pollPlugins();loadWifiStatus();loadApStatus();loadUpdateInfo();loadCanPins();
+updateHW4(1);buildPills();poll();pollLog();pollSniffer();pollRec();pollPlugins();loadWifiStatus();loadApStatus();loadUpdateInfo();loadCanPins();peRender();
 </script>
 </body>
 </html>

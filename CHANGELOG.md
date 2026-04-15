@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Migrate esp32_feather_v2_mcp2515 to new mcp2515 driver and web ui
 
+## [2.2.0-beta.1] - 2026-04-15
+
+### Added
+- Plugin Editor card: create plugins via a form UI without writing JSON manually
+- Support for all plugin ops: set_bit, set_byte, or_byte, and_byte, checksum
+- Per-rule configuration of CAN ID, optional mux value, and send flag
+- Live JSON preview updating as you edit, with collapsible rule sections
+- Client-side validation (ID, mux, bit 0-63, byte 0-7, value 0-255, hex input `0xFF` supported)
+- One-click Install via existing `/plugin_upload` endpoint (no backend changes)
+- Download generated plugin as a standalone `.json` file for sharing or backup
+- Duplicate-name detection against existing installed plugins
+
 ## [2.1.0] - 2026-04-15
 
 First stable release of the 2.1 series. Bundles all changes from 2.1.0-beta.1 through 2.1.0-beta.5.
