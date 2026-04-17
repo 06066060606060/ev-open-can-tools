@@ -122,7 +122,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
   max-height:250px;overflow-y:auto;font-family:'SF Mono','Courier New',monospace}
 .sniff-box::-webkit-scrollbar{width:4px}
 .sniff-box::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:4px}
-.sniff-row{display:grid;grid-template-columns:38px 56px 1fr;gap:8px;
+.sniff-row{display:grid;grid-template-columns:38px 72px 1fr;gap:8px;
   padding:6px 10px;border-bottom:1px solid var(--bd);font-size:11px;align-items:start}
 .sniff-row:last-child{border-bottom:none}
 .sniff-row.hi{border-left:2px solid var(--acc);padding-left:8px}
@@ -327,6 +327,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
   </div>
   <div class="sniff-ctrl">
     <input class="sniff-input" id="sniff-filter" placeholder="Filter by ID or name" oninput="renderSniffer()">
+    <button class="sniff-btn" id="sniff-id-btn" onclick="toggleSniffIdMode()">Wire IDs</button>
     <button class="sniff-btn" id="sniff-pause-btn" onclick="togglePause()">Pause</button>
   </div>
   <div class="sniff-box" id="sniffer">
@@ -594,6 +595,7 @@ function spNames(){return state.hw===2?SP4:SP3;}
 const H4O=[{l:'Off',v:0},{l:'+5 km/h',v:7},{l:'+7 km/h',v:10},{l:'+10 km/h',v:14},{l:'+15 km/h',v:21}];
 let state={hw:1,sp:1,can:true,h4o:0,spl:false};
 let sniffPaused=false,sniffFrames=[];
+let sniffShowDbcIds=localStorage.getItem('sniffIdMode')==='dbc';
 let otaFile=null;
 let otaUser=localStorage.getItem('otaU')||'',otaPass=localStorage.getItem('otaP')||'';
 let logSince=0;
@@ -641,13 +643,31 @@ function updSeg(el,v,cls){
   el.querySelectorAll('.'+cls).forEach(b=>b.classList.toggle('active',parseInt(b.dataset.v)===v));
 }
 
-function setHW(v){state.hw=v;updSeg($('hw-seg'),v,'hw-btn');buildPills();updateHW4(v);pushCfg();}
+function setHW(v){state.hw=v;updSeg($('hw-seg'),v,'hw-btn');buildPills();updateHW4(v);updateSniffIdToggle();renderSniffer();pushCfg();}
 function setSP(v){state.sp=v;state.spl=true;buildPills();pushCfg();}
 function setSPL(v){state.spl=v;buildPills();pushCfg();}
 
 function updateInjectButtons(active){
   $('btn-stop').style.display=active?'':'none';
   $('btn-resume').style.display=active?'none':'';
+}
+
+function sniffBusPrefix(){return state.hw===0?0x0800:0x1000;}
+function sniffBusLabel(){return state.hw===0?'PARTY':'CH';}
+function sniffWireId(id){return id&0x7FF;}
+function sniffDbcId(id){return sniffWireId(id)|sniffBusPrefix();}
+function sniffDisplayId(id){return sniffShowDbcIds?sniffDbcId(id):sniffWireId(id);}
+function updateSniffIdToggle(){
+  const b=$('sniff-id-btn'),bus=sniffBusLabel();
+  b.textContent=sniffShowDbcIds?('DBC '+bus):'Wire IDs';
+  b.title=sniffShowDbcIds?('Showing DBC JSON IDs with '+bus+' prefix'):('Showing on-wire 11-bit CAN IDs');
+  $('sniff-filter').placeholder='Filter by wire/DBC ID or name';
+}
+function toggleSniffIdMode(){
+  sniffShowDbcIds=!sniffShowDbcIds;
+  localStorage.setItem('sniffIdMode',sniffShowDbcIds?'dbc':'wire');
+  updateSniffIdToggle();
+  renderSniffer();
 }
 
 async function pushCfg(){
@@ -700,13 +720,13 @@ function togglePause(){
 }
 
 function renderSniffer(){
-  if(sniffPaused)return;
+  updateSniffIdToggle();
   const filter=$('sniff-filter').value.trim().toLowerCase();
   const el=$('sniffer');
   let frames=sniffFrames;
   if(filter){
     const fid=parseInt(filter);
-    if(!isNaN(fid))frames=frames.filter(f=>f.id===fid);
+    if(!isNaN(fid))frames=frames.filter(f=>sniffWireId(f.id)===fid||sniffDbcId(f.id)===fid);
     else frames=frames.filter(f=>f.name&&f.name.toLowerCase().includes(filter));
   }
   $('sniff-count').textContent=frames.length+' frames';
@@ -717,9 +737,11 @@ function renderSniffer(){
   const ADIds=new Set([1021,1016,921]);
   el.innerHTML=frames.slice(-30).reverse().map(f=>{
     const hex=Array.from({length:f.dlc},(_,i)=>toHex(f.data[i],2)).join(' ');
+    const wireId=sniffWireId(f.id),dbcId=sniffDbcId(f.id),displayId=sniffDisplayId(f.id);
+    const altId=sniffShowDbcIds?('Wire 0x'+toHex(wireId,3)):('DBC '+sniffBusLabel()+' 0x'+toHex(dbcId,3));
     return`<div class="sniff-row${ADIds.has(f.id)?' hi':''}">
       <span class="s-ts">${(f.ts/1000).toFixed(1)}s</span>
-      <span class="s-id">0x${toHex(f.id,3)}</span>
+      <span class="s-id" title="${altId}">0x${toHex(displayId,3)}</span>
       <div><div class="s-data">${hex}</div>${f.name?`<div class="s-name">${f.name}</div>`:''}</div>
     </div>`;
   }).join('');
@@ -821,6 +843,7 @@ async function poll(){
     if(d.mux){for(let i=0;i<3;i++){$(('m'+i+'rx')).textContent=d.mux[i].rx;$(('m'+i+'tx')).textContent=d.mux[i].tx;const e=$(('m'+i+'err'));e.textContent=d.mux[i].err;e.style.color=d.mux[i].err>0?'var(--err)':'';}}
     state.hw=d.hw;state.sp=d.sp;state.can=d.ci;
     updateInjectButtons(d.ci);
+    updateSniffIdToggle();
     updSeg($('hw-seg'),d.hw,'hw-btn');buildPills();updateHW4(d.hw);
     if(d.feat){$('tgl-AD').checked=d.feat.AD;$('tgl-nag').checked=d.feat.nag;$('tgl-summon').checked=d.feat.summon;$('tgl-isa').checked=d.feat.isa;$('tgl-evd').checked=d.feat.evd;if(typeof d.feat.h4o!=='undefined'){state.h4o=d.feat.h4o;buildPills();}if(typeof d.feat.spl!=='undefined'){state.spl=d.feat.spl;}}
     if(typeof d.fAD!=='undefined')$('tgl-fAD').checked=d.fAD;
@@ -1325,7 +1348,7 @@ function peReset(){
 }
 
 setInterval(poll,2000);setInterval(pollLog,3000);setInterval(pollSniffer,1000);setInterval(pollPlugins,10000);setInterval(loadWifiStatus,10000);setInterval(loadApStatus,10000);
-updateHW4(1);buildPills();poll();pollLog();pollSniffer();pollRec();pollPlugins();loadWifiStatus();loadApStatus();loadUpdateInfo();loadCanPins();peRender();
+updateHW4(1);buildPills();updateSniffIdToggle();poll();pollLog();pollSniffer();pollRec();pollPlugins();loadWifiStatus();loadApStatus();loadUpdateInfo();loadCanPins();peRender();
 </script>
 </body>
 </html>
