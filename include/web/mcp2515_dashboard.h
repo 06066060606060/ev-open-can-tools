@@ -127,6 +127,7 @@ static void dashSwapHandler(uint8_t mode);
 static void dashApplyFilters();
 static void dashReapplyFiltersWithPlugins();
 static void dashApplyRuntimeState();
+static void dashRestorePluginStates();
 
 // CAN recorder
 #define REC_CAP 2000
@@ -395,6 +396,61 @@ static void dashLoadPrefs()
             " summon=" + String(feat.summonUnlock ? "ON" : "OFF") +
             " isa=" + String(feat.isaSuppress ? "ON" : "OFF") +
             " evd=" + String(feat.evDetection ? "ON" : "OFF"));
+}
+
+static uint32_t dashPluginStateHash(const char *value)
+{
+    uint32_t hash = 2166136261u;
+    while (*value)
+    {
+        hash ^= (uint8_t)*value++;
+        hash *= 16777619u;
+    }
+    return hash;
+}
+
+static void dashPluginStateKey(const char *filename, char *key, size_t keySize)
+{
+    snprintf(key, keySize, "plg_%08lx", (unsigned long)dashPluginStateHash(filename));
+}
+
+static void dashSavePluginState(const PluginData &plugin)
+{
+    Preferences pluginPrefs;
+    if (!pluginPrefs.begin(PREFS_NS, false))
+        return;
+
+    char key[13];
+    dashPluginStateKey(plugin.filename, key, sizeof(key));
+    pluginPrefs.putBool(key, plugin.enabled);
+    pluginPrefs.end();
+}
+
+static void dashClearPluginState(const PluginData &plugin)
+{
+    Preferences pluginPrefs;
+    if (!pluginPrefs.begin(PREFS_NS, false))
+        return;
+
+    char key[13];
+    dashPluginStateKey(plugin.filename, key, sizeof(key));
+    pluginPrefs.remove(key);
+    pluginPrefs.end();
+}
+
+static void dashRestorePluginStates()
+{
+    Preferences pluginPrefs;
+    if (!pluginPrefs.begin(PREFS_NS, false))
+        return;
+
+    for (uint8_t i = 0; i < pluginCount; i++)
+    {
+        char key[13];
+        dashPluginStateKey(pluginStore[i].filename, key, sizeof(key));
+        pluginStore[i].enabled = pluginPrefs.getBool(key, pluginStore[i].enabled);
+    }
+    pluginPrefs.end();
 }
 
 // MCP2515-only: fine-grained filter register reload on HW mode switch.
@@ -1047,6 +1103,7 @@ static void handlePluginToggle()
     if (idx < pluginCount)
     {
         pluginStore[idx].enabled = !pluginStore[idx].enabled;
+        dashSavePluginState(pluginStore[idx]);
         dashReapplyFiltersWithPlugins();
         dashLog("[PLG] " + String(pluginStore[idx].name) + " " +
                 String(pluginStore[idx].enabled ? "enabled" : "disabled"));
@@ -1065,6 +1122,7 @@ static void handlePluginRemove()
     if (idx < pluginCount)
     {
         String name = pluginStore[idx].name;
+        dashClearPluginState(pluginStore[idx]);
         pluginRemove(idx);
         dashReapplyFiltersWithPlugins();
         dashLog("[PLG] Removed: " + name);
@@ -1973,6 +2031,7 @@ static void mcpDashboardSetup(CarManagerBase *handler, CanDriver *driver)
 
     // Load plugins from SPIFFS
     pluginLoadAll();
+    dashRestorePluginStates();
     if (pluginCount > 0)
     {
         dashLog("[PLG] Loaded " + String(pluginCount) + " plugin(s)");

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0-beta.10] - 2026-04-17
+
+### Fixed
+- Plugin enabled/disabled state is now persisted across reboot instead of defaulting back to enabled on startup
+- Removing a plugin now also clears its persisted enabled/disabled state
+- Dashboard background polling now stops cleanly after repeated connection failures and points users to the STA IP after WiFi handoff instead of continuously spamming timeout errors
+
 ## [2.2.0-beta.9] - 2026-04-17
 
 ### Added

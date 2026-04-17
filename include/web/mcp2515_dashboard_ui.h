@@ -599,6 +599,54 @@ let sniffShowDbcIds=localStorage.getItem('sniffIdMode')==='dbc';
 let otaFile=null;
 let otaUser=localStorage.getItem('otaU')||'',otaPass=localStorage.getItem('otaP')||'';
 let logSince=0;
+let dashboardPollTimers=[];
+let dashboardPollFailures=0;
+let dashboardPollStopped=false;
+let dashboardStaIp='';
+const pollLocks={};
+
+function stopDashboardPolling(){
+  if(dashboardPollStopped)return;
+  dashboardPollStopped=true;
+  dashboardPollTimers.forEach(clearInterval);
+  dashboardPollTimers=[];
+  $('dot').className='sdot dot-off';
+  $('hdr-desc').textContent='Dashboard disconnected';
+  let msg='Connection to '+location.hostname+' lost. Reload after reconnecting.';
+  if(dashboardStaIp&&dashboardStaIp!==location.hostname)msg='Connection to '+location.hostname+' lost. Switch to your normal WiFi and open http://'+dashboardStaIp;
+  $('wifi-status').textContent=msg;
+  $('wifi-status').style.color='var(--err)';
+}
+
+function noteDashboardPoll(ok){
+  if(ok){dashboardPollFailures=0;return;}
+  if(dashboardPollStopped)return;
+  dashboardPollFailures++;
+  if(dashboardPollFailures>=3)stopDashboardPolling();
+}
+
+async function fetchPollJson(url,timeoutMs){
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),timeoutMs||2500);
+  try{
+    const r=await fetch(url,{signal:ctrl.signal});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    noteDashboardPoll(true);
+    return d;
+  }catch(e){
+    noteDashboardPoll(false);
+    throw e;
+  }finally{
+    clearTimeout(timer);
+  }
+}
+
+async function runPoll(name,fn){
+  if(dashboardPollStopped||pollLocks[name])return;
+  pollLocks[name]=true;
+  try{return await fn();}finally{pollLocks[name]=false;}
+}
 
 function toggleTheme(){
   const html=document.documentElement;
@@ -748,8 +796,10 @@ function renderSniffer(){
 }
 
 async function pollSniffer(){
-  if(sniffPaused)return;
-  try{const r=await fetch('/frames');const d=await r.json();sniffFrames=d.frames||[];renderSniffer();}catch(e){}
+  return runPoll('frames',async()=>{
+    if(sniffPaused)return;
+    try{const d=await fetchPollJson('/frames',1500);sniffFrames=d.frames||[];renderSniffer();}catch(e){}
+  });
 }
 
 // OTA upload
@@ -815,8 +865,9 @@ async function uploadFirmware(){
 }
 
 async function poll(){
-  try{
-    const r=await fetch('/status');const d=await r.json();
+  return runPoll('status',async()=>{
+    try{
+      const d=await fetchPollJson('/status',1500);
     const on=d.can;
     $('s-can').textContent=on?'Active':'Offline';
     $('s-can').className='stat-val '+(on?'v-ok':'v-err');
@@ -848,7 +899,8 @@ async function poll(){
     if(d.feat){$('tgl-AD').checked=d.feat.AD;$('tgl-nag').checked=d.feat.nag;$('tgl-summon').checked=d.feat.summon;$('tgl-isa').checked=d.feat.isa;$('tgl-evd').checked=d.feat.evd;if(typeof d.feat.h4o!=='undefined'){state.h4o=d.feat.h4o;buildPills();}if(typeof d.feat.spl!=='undefined'){state.spl=d.feat.spl;}}
     if(typeof d.fAD!=='undefined')$('tgl-fAD').checked=d.fAD;
     if(typeof d.eprn!=='undefined')$('tgl-eprn').checked=d.eprn;
-  }catch(e){}
+    }catch(e){}
+  });
 }
 
 function colorLog(l){
@@ -861,8 +913,9 @@ function colorLog(l){
   return l;
 }
 async function pollLog(){
-  try{
-    const r=await fetch('/log?since='+logSince);const d=await r.json();
+  return runPoll('log',async()=>{
+    try{
+      const d=await fetchPollJson('/log?since='+logSince,2000);
     if(d.seq)logSince=d.seq;
     if(!d.lines.length)return;
     const el=$('log');
@@ -873,7 +926,8 @@ async function pollLog(){
     const lines=el.innerHTML.split('\n');
     if(lines.length>100)el.innerHTML=lines.slice(-100).join('\n');
     el.scrollTop=el.scrollHeight;
-  }catch(e){}
+    }catch(e){}
+  });
 }
 
 async function resetStats(){try{await fetch('/reset_stats',{method:'POST'});}catch(e){}poll();}
@@ -929,13 +983,15 @@ async function saveAP(){
   }catch(e){$('ap-status').textContent='Error';$('ap-status').style.color='var(--err)';}
 }
 async function loadApStatus(){
-  try{const r=await fetch('/ap_status');const d=await r.json();
+  return runPoll('ap_status',async()=>{
+    try{const d=await fetchPollJson('/ap_status',2000);
     if(d.ssid)$('ap-ssid').value=d.ssid;
     $('ap-clients').textContent=d.clients+' client'+(d.clients!==1?'s':'');
     if(typeof d.hidden!=='undefined')$('ap-hidden').checked=!!d.hidden;
     if(d.stored){$('ap-stored').textContent='saved';$('ap-stored').style.color='var(--ok)';}
     else{$('ap-stored').textContent='firmware default';$('ap-stored').style.color='var(--tx3)';}
-  }catch(e){}
+    }catch(e){}
+  });
 }
 // ── WiFi management ──
 function toggleStaticIP(){
@@ -961,11 +1017,16 @@ function pickWifi(ssid){
   $('wifi-ssid').value=ssid;$('wifi-nets').style.display='none';$('wifi-pass').focus();
 }
 async function loadWifiStatus(){
-  try{const r=await fetch('/wifi_status');const d=await r.json();
+  return runPoll('wifi_status',async()=>{
+    try{const d=await fetchPollJson('/wifi_status',2000);
+    dashboardStaIp=d.connected&&d.ip?d.ip:'';
     if(d.ssid)$('wifi-ssid').value=d.ssid;
     if(d.stored){$('wifi-stored').textContent='\u2022 saved';$('wifi-stored').style.color='var(--ok)';}
     else{$('wifi-stored').textContent='';}
-    if(d.connected){$('wifi-status').textContent='Connected: '+d.ip;$('wifi-status').style.color='var(--ok)';}
+    if(d.connected){
+      $('wifi-status').textContent=(d.ip&&d.ip!==location.hostname)?('Connected: '+d.ip+' \u2022 switch to that WiFi and open this IP'):('Connected: '+d.ip);
+      $('wifi-status').style.color='var(--ok)';
+    }
     else if(d.ssid){$('wifi-status').textContent='Connecting to '+d.ssid+'...';$('wifi-status').style.color='var(--acc)';}
     if(d.static){$('wifi-static').checked=true;toggleStaticIP();
       if(d.cfg_ip)$('wifi-ip').value=d.cfg_ip;
@@ -973,7 +1034,8 @@ async function loadWifiStatus(){
       if(d.cfg_mask)$('wifi-mask').value=d.cfg_mask;
       if(d.cfg_dns)$('wifi-dns').value=d.cfg_dns;
     }
-  }catch(e){}
+    }catch(e){}
+  });
 }
 async function saveWifi(){
   const ssid=$('wifi-ssid').value,pass=$('wifi-pass').value;
@@ -1054,37 +1116,40 @@ function toggleInfo(id){
   if(el)el.style.display=el.style.display==='none'?'block':'none';
 }
 async function pollPlugins(){
-  try{const r=await fetch('/plugins');const d=await r.json();
-    const max=d.maxPlugins||0;
-    $('plg-count').textContent=max?d.plugins.length+' / '+max+' installed':d.plugins.length+' installed';
-    if($('plg-limit')){
-      const full=max&&d.plugins.length>=max;
-      $('plg-limit').textContent=max?(full?'Maximum '+max+' plugins reached. Remove one before installing another.':'Maximum '+max+' plugins total. Remove one before installing another.'):'Maximum plugins: --';
-      $('plg-limit').style.color=full?'var(--err)':'var(--tx3)';
-    }
-    const el=$('plg-list');
-    if(!d.plugins.length){el.innerHTML='<div style="font-size:12px;color:var(--tx3);text-align:center;padding:12px">No plugins installed</div>';}
-    else{el.innerHTML=d.plugins.map((p,i)=>{
-      let hasConflict=p.details&&p.details.some(r=>r.conflict);
-      let row='<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--bd)">';
-      row+='<div class="feat-row"><div class="feat-info" style="cursor:pointer" onclick="toggleDetails('+i+')">';
-      row+='<div class="feat-name">'+p.name+' <span style="color:var(--tx3);font-size:11px">v'+p.version+'</span>';
-      if(hasConflict) row+=' <span style="color:var(--err);font-size:11px">&#9888;</span>';
-      row+='</div>';
-      row+='<div class="feat-desc">'+p.rules+' rule'+(p.rules!==1?'s':'')+(p.author?' &bull; '+p.author:'')+' &bull; <span style="color:var(--acc);cursor:pointer">details</span></div>';
-      row+='</div>';
-      row+='<label class="tgl"><input type="checkbox" '+(p.enabled?'checked':'')+' onchange="togglePlugin('+i+')"><div class="tgl-track"><div class="tgl-thumb"></div></div></label>';
-      row+='<button onclick="removePlugin('+i+')" style="margin-left:8px;padding:4px 8px;border:1px solid var(--errBd);border-radius:5px;background:transparent;color:var(--err);cursor:pointer;font-size:10px;font-family:inherit">X</button></div>';
-      if(p.details){
-        row+='<div id="plg-det-'+i+'" style="display:none">';
-        if(hasConflict) row+='<div style="margin-top:6px;padding:6px 8px;background:var(--errBg,#3a1a1a);border:1px solid var(--errBd);border-radius:6px;font-size:11px;color:var(--err)">&#9888; Some CAN IDs overlap with base firmware. Plugin rules run <b>after</b> the original handler. Both will send modified frames.</div>';
-        row+=renderPluginDetails(p.details);
-        row+='</div>';
+  return runPoll('plugins',async()=>{
+    try{
+      const d=await fetchPollJson('/plugins',2000);
+      const max=d.maxPlugins||0;
+      $('plg-count').textContent=max?d.plugins.length+' / '+max+' installed':d.plugins.length+' installed';
+      if($('plg-limit')){
+        const full=max&&d.plugins.length>=max;
+        $('plg-limit').textContent=max?(full?'Maximum '+max+' plugins reached. Remove one before installing another.':'Maximum '+max+' plugins total. Remove one before installing another.'):'Maximum plugins: --';
+        $('plg-limit').style.color=full?'var(--err)':'var(--tx3)';
       }
-      row+='</div>';
-      return row;
-    }).join('');}
-  }catch(e){}
+      const el=$('plg-list');
+      if(!d.plugins.length){el.innerHTML='<div style="font-size:12px;color:var(--tx3);text-align:center;padding:12px">No plugins installed</div>';}
+      else{el.innerHTML=d.plugins.map((p,i)=>{
+        let hasConflict=p.details&&p.details.some(r=>r.conflict);
+        let row='<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--bd)">';
+        row+='<div class="feat-row"><div class="feat-info" style="cursor:pointer" onclick="toggleDetails('+i+')">';
+        row+='<div class="feat-name">'+p.name+' <span style="color:var(--tx3);font-size:11px">v'+p.version+'</span>';
+        if(hasConflict) row+=' <span style="color:var(--err);font-size:11px">&#9888;</span>';
+        row+='</div>';
+        row+='<div class="feat-desc">'+p.rules+' rule'+(p.rules!==1?'s':'')+(p.author?' &bull; '+p.author:'')+' &bull; <span style="color:var(--acc);cursor:pointer">details</span></div>';
+        row+='</div>';
+        row+='<label class="tgl"><input type="checkbox" '+(p.enabled?'checked':'')+' onchange="togglePlugin('+i+')"><div class="tgl-track"><div class="tgl-thumb"></div></div></label>';
+        row+='<button onclick="removePlugin('+i+')" style="margin-left:8px;padding:4px 8px;border:1px solid var(--errBd);border-radius:5px;background:transparent;color:var(--err);cursor:pointer;font-size:10px;font-family:inherit">X</button></div>';
+        if(p.details){
+          row+='<div id="plg-det-'+i+'" style="display:none">';
+          if(hasConflict) row+='<div style="margin-top:6px;padding:6px 8px;background:var(--errBg,#3a1a1a);border:1px solid var(--errBd);border-radius:6px;font-size:11px;color:var(--err)">&#9888; Some CAN IDs overlap with base firmware. Plugin rules run <b>after</b> the original handler. Both will send modified frames.</div>';
+          row+=renderPluginDetails(p.details);
+          row+='</div>';
+        }
+        row+='</div>';
+        return row;
+      }).join('');}
+    }catch(e){}
+  });
 }
 
 // ── Firmware update ──
@@ -1347,7 +1412,7 @@ function peReset(){
   peRender();peSetStatus('','');
 }
 
-setInterval(poll,2000);setInterval(pollLog,3000);setInterval(pollSniffer,1000);setInterval(pollPlugins,10000);setInterval(loadWifiStatus,10000);setInterval(loadApStatus,10000);
+dashboardPollTimers.push(setInterval(poll,2000));dashboardPollTimers.push(setInterval(pollLog,3000));dashboardPollTimers.push(setInterval(pollSniffer,1000));dashboardPollTimers.push(setInterval(pollPlugins,10000));dashboardPollTimers.push(setInterval(loadWifiStatus,10000));dashboardPollTimers.push(setInterval(loadApStatus,10000));
 updateHW4(1);buildPills();updateSniffIdToggle();poll();pollLog();pollSniffer();pollRec();pollPlugins();loadWifiStatus();loadApStatus();loadUpdateInfo();loadCanPins();peRender();
 </script>
 </body>
