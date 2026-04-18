@@ -520,7 +520,7 @@ static void dashLoadPrefs()
 
     if (migratedHw)
         dashLog("[BOOT] HW default synced to " + String(hwMode == 0 ? "LEGACY" : hwMode == 1 ? "HW3"
-                                                                                           : "HW4"));
+                                                                                             : "HW4"));
     dashLog("[BOOT] Prefs loaded HW=" + String(hwMode));
     dashLog("[BOOT] canActive=" + String(canActive ? "YES" : "NO"));
 }
