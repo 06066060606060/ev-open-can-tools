@@ -3,6 +3,7 @@
 [Project Home](../) | [Documentation](index.md) | [Build & Flash](building.md) | [Plugin System](plugins.md) | [Release Notes](../CHANGELOG.md)
 
 The dashboard is available on ESP32 builds that include `ESP32_DASHBOARD`. It runs from the device itself and is intended for local management at `http://192.168.4.1/` while connected to the device hotspot.
+![Dashboard](img/dashboard.png)
 
 ## Core Runtime Controls
 
