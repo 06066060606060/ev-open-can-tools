@@ -129,6 +129,7 @@ static void dashApplyFilters();
 static void dashReapplyFiltersWithPlugins();
 static void dashApplyRuntimeState();
 static void dashRestorePluginStates();
+static void dashClearLegacyFeaturePrefs();
 
 // CAN recorder
 #define REC_CAP 2000
@@ -415,14 +416,7 @@ static void dashSavePrefs()
     prefs.putUChar("hw_def", DASH_DEFAULT_HW);
     prefs.putUChar("sp", dashHandler ? (int)dashHandler->speedProfile : 1);
     prefs.putBool("can", canActive);
-    prefs.putBool("fAD", bypassTlssc);
     prefs.putBool("eprn", dashHandler ? (bool)dashHandler->enablePrint : true);
-    prefs.putBool("f_AD", feat.ADEnabled);
-    prefs.putBool("f_nag", feat.nagSuppress);
-    prefs.putBool("f_sum", feat.summonUnlock);
-    prefs.putBool("f_isa", feat.isaSuppress);
-    prefs.putBool("f_evd", feat.evDetection);
-    prefs.putUChar("f_h4o", feat.hw4Offset);
     prefs.putBool("sp_lock", (bool)speedProfileLocked);
     prefs.end();
 }
@@ -447,9 +441,35 @@ static void dashToggleCanActive(const char *reason = nullptr)
     dashSetCanActive(!canActive, reason);
 }
 
+static void dashClearLegacyFeaturePrefs()
+{
+    static const char *const keys[] = {
+        "fAD",
+        "f_AD",
+        "f_nag",
+        "f_sum",
+        "f_isa",
+        "f_evd",
+        "f_h4o",
+    };
+
+    bool removed = false;
+    for (const char *key : keys)
+    {
+        if (!prefs.isKey(key))
+            continue;
+        prefs.remove(key);
+        removed = true;
+    }
+
+    if (removed)
+        dashLog("[BOOT] Cleared legacy feature prefs from NVS");
+}
+
 static void dashLoadPrefs()
 {
     prefs.begin(PREFS_NS, false);
+    dashClearLegacyFeaturePrefs();
     bool hasStoredHw = prefs.isKey("hw");
     uint8_t storedHw = prefs.getUChar("hw", DASH_DEFAULT_HW);
     uint8_t storedDefaultHw = prefs.getUChar("hw_def", kDashUnsetU8);
@@ -524,13 +544,7 @@ static void dashLoadPrefs()
         dashLog("[BOOT] HW default synced to " + String(hwMode == 0 ? "LEGACY" : hwMode == 1 ? "HW3"
                                                                                            : "HW4"));
     dashLog("[BOOT] Prefs loaded HW=" + String(hwMode) + " SP=" + String(sp));
-    dashLog("[BOOT] canActive=" + String(canActive ? "YES" : "NO") +
-            " bypassTlssc=" + String(bypassTlssc ? "YES" : "NO"));
-    dashLog("[BOOT] feat: AD=" + String(feat.ADEnabled ? "ON" : "OFF") +
-            " nag=" + String(feat.nagSuppress ? "ON" : "OFF") +
-            " summon=" + String(feat.summonUnlock ? "ON" : "OFF") +
-            " isa=" + String(feat.isaSuppress ? "ON" : "OFF") +
-            " evd=" + String(feat.evDetection ? "ON" : "OFF"));
+    dashLog("[BOOT] canActive=" + String(canActive ? "YES" : "NO"));
 }
 
 static uint32_t dashPluginStateHash(const char *value)
