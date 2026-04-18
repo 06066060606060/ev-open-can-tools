@@ -114,47 +114,15 @@ struct HW3Handler : public CarManagerBase
 {
     const uint32_t *filterIds() const override
     {
-#if defined(ESP32_DASHBOARD)
-        static constexpr uint32_t ids[] = {787, 880, 1016, 1021, 2047};
-        return ids;
-    }
-    uint8_t filterIdCount() const override { return 5; }
-#else
         static constexpr uint32_t ids[] = {787, 1016, 1021, 2047};
         return ids;
     }
     uint8_t filterIdCount() const override { return 4; }
-#endif
 
     void handleMessage(CanFrame &frame, CanDriver &driver) override
     {
         if (onFrame)
             onFrame(frame);
-#if defined(ESP32_DASHBOARD)
-        if (nagKillerRuntime && frame.id == 880 && frame.dlc >= 8)
-        {
-            if ((frame.data[4] >> 6 & 0x03) == 0)
-            {
-                CanFrame echo;
-                echo.id = 880;
-                echo.dlc = 8;
-                echo.data[0] = frame.data[0];
-                echo.data[1] = frame.data[1];
-                echo.data[2] = (frame.data[2] & 0xF0) | 0x08;
-                echo.data[3] = 0xB6;
-                echo.data[4] = frame.data[4] | 0x40;
-                echo.data[5] = frame.data[5];
-                echo.data[6] = (frame.data[6] & 0xF0) | ((frame.data[6] + 1) & 0x0F);
-                uint16_t s = echo.data[0] + echo.data[1] + echo.data[2] + echo.data[3] + echo.data[4] + echo.data[5] + echo.data[6];
-                echo.data[7] = static_cast<uint8_t>((s + 0x73) & 0xFF);
-                framesSent++;
-                driver.send(echo);
-                if (onSend)
-                    onSend(3, true);
-            }
-            return;
-        }
-#endif
         if (frame.id == 787)
         {
             if (frame.dlc < 8)
@@ -238,7 +206,7 @@ struct HW3Handler : public CarManagerBase
             if (index == 1)
             {
                 bool modified = false;
-#if defined(ENHANCED_AUTOPILOT) || defined(ESP32_DASHBOARD)
+#if defined(ENHANCED_AUTOPILOT) && !defined(ESP32_DASHBOARD)
                 if (enhancedAutopilotRuntime)
                 {
                     setBit(frame, 19, false);
@@ -380,12 +348,7 @@ struct HW4Handler : public CarManagerBase
 {
     const uint32_t *filterIds() const override
     {
-#if defined(ESP32_DASHBOARD)
-        static constexpr uint32_t ids[] = {880, 921, 1016, 1021, 2047};
-        return ids;
-    }
-    uint8_t filterIdCount() const override { return 5; }
-#elif defined(ISA_SPEED_CHIME_SUPPRESS)
+#if defined(ISA_SPEED_CHIME_SUPPRESS) && !defined(ESP32_DASHBOARD)
         static constexpr uint32_t ids[] = {921, 1016, 1021, 2047};
         return ids;
     }
@@ -401,32 +364,7 @@ struct HW4Handler : public CarManagerBase
     {
         if (onFrame)
             onFrame(frame);
-#if defined(ESP32_DASHBOARD)
-        if (nagKillerRuntime && frame.id == 880 && frame.dlc >= 8)
-        {
-            if ((frame.data[4] >> 6 & 0x03) == 0)
-            {
-                CanFrame echo;
-                echo.id = 880;
-                echo.dlc = 8;
-                echo.data[0] = frame.data[0];
-                echo.data[1] = frame.data[1];
-                echo.data[2] = (frame.data[2] & 0xF0) | 0x08;
-                echo.data[3] = 0xB6;
-                echo.data[4] = frame.data[4] | 0x40;
-                echo.data[5] = frame.data[5];
-                echo.data[6] = (frame.data[6] & 0xF0) | ((frame.data[6] + 1) & 0x0F);
-                uint16_t s = echo.data[0] + echo.data[1] + echo.data[2] + echo.data[3] + echo.data[4] + echo.data[5] + echo.data[6];
-                echo.data[7] = static_cast<uint8_t>((s + 0x73) & 0xFF);
-                framesSent++;
-                driver.send(echo);
-                if (onSend)
-                    onSend(3, true);
-            }
-            return;
-        }
-#endif
-#if defined(ISA_SPEED_CHIME_SUPPRESS) || defined(ESP32_DASHBOARD)
+#if defined(ISA_SPEED_CHIME_SUPPRESS) && !defined(ESP32_DASHBOARD)
         if (isaSpeedChimeSuppressRuntime && frame.id == 921)
         {
             if (frame.dlc < 8)
@@ -513,7 +451,7 @@ struct HW4Handler : public CarManagerBase
             {
                 setBit(frame, 46, true);
                 setBit(frame, 60, true);
-#if defined(EMERGENCY_VEHICLE_DETECTION) || defined(ESP32_DASHBOARD)
+#if defined(EMERGENCY_VEHICLE_DETECTION) && !defined(ESP32_DASHBOARD)
                 if (emergencyVehicleDetectionRuntime)
                     setBit(frame, 59, true);
 #endif
@@ -525,7 +463,7 @@ struct HW4Handler : public CarManagerBase
             if (index == 1)
             {
                 bool modified = false;
-#if defined(ENHANCED_AUTOPILOT) || defined(ESP32_DASHBOARD)
+#if defined(ENHANCED_AUTOPILOT) && !defined(ESP32_DASHBOARD)
                 if (enhancedAutopilotRuntime)
                 {
                     setBit(frame, 19, false);

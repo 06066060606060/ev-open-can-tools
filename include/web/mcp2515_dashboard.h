@@ -387,11 +387,11 @@ static bool dashCheckNagEnabled()
 
 static void dashApplyRuntimeState()
 {
-    bypassTlsscRequirementRuntime = canActive && bypassTlssc;
-    emergencyVehicleDetectionRuntime = canActive && feat.evDetection;
-    isaSpeedChimeSuppressRuntime = canActive && feat.isaSuppress;
+    bypassTlsscRequirementRuntime = false;
+    emergencyVehicleDetectionRuntime = false;
+    isaSpeedChimeSuppressRuntime = false;
     enhancedAutopilotRuntime = false;
-    nagKillerRuntime = canActive && kNagKillerDefaultEnabled;
+    nagKillerRuntime = false;
     hw4OffsetRuntime = 0;
 
     if (dashHandler)
@@ -472,12 +472,12 @@ static void dashLoadPrefs()
     if (storedDefaultHw != DASH_DEFAULT_HW)
         prefs.putUChar("hw_def", DASH_DEFAULT_HW);
     canActive = prefs.getBool("can", kDashInjectionDefaultEnabled);
-    bypassTlssc = kBypassTlsscRequirementDefaultEnabled;
+    bypassTlssc = false;
     feat.ADEnabled = true;
     feat.nagSuppress = false;
     feat.summonUnlock = false;
-    feat.isaSuppress = kIsaSpeedChimeSuppressDefaultEnabled;
-    feat.evDetection = kEmergencyVehicleDetectionDefaultEnabled;
+    feat.isaSuppress = false;
+    feat.evDetection = false;
     feat.hw4Offset = 0;
     speedProfileLocked = prefs.getBool("sp_lock", false);
     uint8_t sp = prefs.getUChar("sp", 1);
@@ -1065,20 +1065,6 @@ static const char *pluginOpName(PluginOpType t)
     }
 }
 
-static bool isHandlerCanId(uint32_t id)
-{
-    if (!appActiveHandler)
-        return false;
-    const uint32_t *hIds = appActiveHandler->filterIds();
-    uint8_t hCount = appActiveHandler->filterIdCount();
-    for (uint8_t i = 0; i < hCount; i++)
-    {
-        if (hIds[i] == id)
-            return true;
-    }
-    return false;
-}
-
 static String dashFrameDataJson(const CanFrame &frame)
 {
     String j = "[";
@@ -1191,7 +1177,6 @@ static void handlePluginList()
             j += ",\"hex\":\"0x" + String(rule.canId, HEX) + "\"";
             j += ",\"mux\":" + String(rule.mux);
             j += ",\"send\":" + String(rule.sendAfter ? "true" : "false");
-            j += ",\"conflict\":" + String(isHandlerCanId(rule.canId) ? "true" : "false");
             j += ",\"ops\":[";
             for (uint8_t o = 0; o < rule.opCount; o++)
             {
@@ -2282,6 +2267,8 @@ static void handleUpdateBeta()
 
 static void dashPluginProcess(const CanFrame &frame, CanDriver &driver)
 {
+    if (!canActive)
+        return;
     pluginProcessFrame(frame, driver);
 }
 

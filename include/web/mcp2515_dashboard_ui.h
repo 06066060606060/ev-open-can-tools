@@ -408,7 +408,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
   </div>
 
   <div id="plg-info" style="display:none;margin-bottom:12px;padding:10px;background:var(--bg2);border:1px solid var(--bd);border-radius:6px;font-size:12px;color:var(--tx3);line-height:1.5">
-    Plugins are JSON rules that modify CAN messages in real time. Install via URL, file upload or paste. A &#9888; marks conflicts with base firmware handlers &mdash; plugin rules then run <b>after</b> the original handler.
+    Plugins are JSON rules that modify CAN messages in real time. Install via URL, file upload or paste.
     <div style="margin-top:6px"><a href="https://ev-open-can-tools.github.io/ev-open-can-tools/docs/plugins.html" target="_blank" rel="noopener" style="color:var(--acc);text-decoration:none">Documentation &amp; examples &rarr;</a></div>
   </div>
 
@@ -1266,12 +1266,10 @@ function renderPluginsState(d){
     return;
   }
   el.innerHTML=installedPlugins.map((p,i)=>{
-    let hasConflict=p.details&&p.details.some(r=>r.conflict);
     let detailsOpen=!!pluginDetailOpen[p.name];
     let row='<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--bd)">';
     row+='<div class="feat-row"><div class="feat-info" style="cursor:pointer" onclick="toggleDetails('+i+')">';
     row+='<div class="feat-name">'+p.name+' <span style="color:var(--tx3);font-size:11px">v'+p.version+'</span>';
-    if(hasConflict) row+=' <span style="color:var(--err);font-size:11px">&#9888;</span>';
     row+='</div>';
     row+='<div class="feat-desc">'+p.rules+' rule'+(p.rules!==1?'s':'')+(p.author?' &bull; '+p.author:'')+' &bull; <span style="color:var(--acc);cursor:pointer">details</span></div>';
     row+='</div>';
@@ -1280,7 +1278,6 @@ function renderPluginsState(d){
     row+='<button onclick="removePlugin('+i+')" style="margin-left:8px;padding:4px 8px;border:1px solid var(--errBd);border-radius:5px;background:transparent;color:var(--err);cursor:pointer;font-size:10px;font-family:inherit">X</button></div>';
     if(p.details){
       row+='<div id="plg-det-'+i+'" style="display:'+(detailsOpen?'block':'none')+'">';
-      if(hasConflict) row+='<div style="margin-top:6px;padding:6px 8px;background:var(--errBg,#3a1a1a);border:1px solid var(--errBd);border-radius:6px;font-size:11px;color:var(--err)">&#9888; Some CAN IDs overlap with base firmware. Plugin rules run <b>after</b> the original handler. Both will send modified frames.</div>';
       row+=renderPluginDetails(p.details);
       row+='</div>';
     }

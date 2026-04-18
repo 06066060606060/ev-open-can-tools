@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.2-beta.1] - 2026-04-18
+
+### Changed
+- Dashboard builds now ignore all `BEHAVIOUR OPTIONS` from `platformio_profile.h`; these overrides are plugin-managed and are no longer compiled into firmware when `ESP32_DASHBOARD` is enabled
+
+### Fixed
+- Dashboard injection stop now also blocks plugin-based frame injection instead of letting enabled plugins keep sending
+- TWAI dashboard profile syncing no longer forces commented-out behavior options into the build
+- Dashboard boot/runtime state no longer reports legacy built-in ISA, emergency vehicle detection, TLSSC bypass, or nag handling as active in plugin-managed builds
+- Plugin cards no longer show the obsolete built-in conflict warning badge and message
+
 ## [2.3.1] - 2026-04-18
 
 ### Fixed
