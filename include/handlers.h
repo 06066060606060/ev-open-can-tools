@@ -76,7 +76,6 @@ struct LegacyHandler : public CarManagerBase
             if (index == 0 && ADEnabled && (!checkAD || checkAD()))
             {
                 setBit(frame, 46, true);
-                setSpeedProfileV12V13(frame, speedProfile);
                 framesSent++;
                 driver.send(frame);
                 if (onSend)
@@ -137,23 +136,20 @@ struct HW3Handler : public CarManagerBase
         {
             if (frame.dlc < 6)
                 return;
-            if (!speedProfileLocked)
+            uint8_t followDistance = (frame.data[5] & 0b11100000) >> 5;
+            switch (followDistance)
             {
-                uint8_t followDistance = (frame.data[5] & 0b11100000) >> 5;
-                switch (followDistance)
-                {
-                case 1:
-                    speedProfile = 2;
-                    break;
-                case 2:
-                    speedProfile = 1;
-                    break;
-                case 3:
-                    speedProfile = 0;
-                    break;
-                default:
-                    break;
-                }
+            case 1:
+                speedProfile = 2;
+                break;
+            case 2:
+                speedProfile = 1;
+                break;
+            case 3:
+                speedProfile = 0;
+                break;
+            default:
+                break;
             }
             return;
         }
@@ -197,7 +193,6 @@ struct HW3Handler : public CarManagerBase
             {
                 speedOffset = std::max(std::min(((uint8_t)((frame.data[3] >> 1) & 0x3F) - 30) * 5, 100), 0);
                 setBit(frame, 46, true);
-                setSpeedProfileV12V13(frame, speedProfile);
                 framesSent++;
                 driver.send(frame);
                 if (onSend)
@@ -225,17 +220,6 @@ struct HW3Handler : public CarManagerBase
                     if (onSend)
                         onSend(1, true);
                 }
-            }
-            if (index == 2 && ADEnabled && (!checkAD || checkAD()))
-            {
-                frame.data[0] &= ~(0b11000000);
-                frame.data[1] &= ~(0b00111111);
-                frame.data[0] |= (speedOffset & 0x03) << 6;
-                frame.data[1] |= (speedOffset >> 2);
-                framesSent++;
-                driver.send(frame);
-                if (onSend)
-                    onSend(2, true);
             }
             if (index == 0 && enablePrint)
             {
@@ -388,27 +372,24 @@ struct HW4Handler : public CarManagerBase
         {
             if (frame.dlc < 6)
                 return;
-            if (!speedProfileLocked)
+            auto fd = (frame.data[5] & 0b11100000) >> 5;
+            switch (fd)
             {
-                auto fd = (frame.data[5] & 0b11100000) >> 5;
-                switch (fd)
-                {
-                case 1:
-                    speedProfile = 3;
-                    break;
-                case 2:
-                    speedProfile = 2;
-                    break;
-                case 3:
-                    speedProfile = 1;
-                    break;
-                case 4:
-                    speedProfile = 0;
-                    break;
-                case 5:
-                    speedProfile = 4;
-                    break;
-                }
+            case 1:
+                speedProfile = 3;
+                break;
+            case 2:
+                speedProfile = 2;
+                break;
+            case 3:
+                speedProfile = 1;
+                break;
+            case 4:
+                speedProfile = 0;
+                break;
+            case 5:
+                speedProfile = 4;
+                break;
             }
         }
         if (frame.id == 2047)
@@ -483,18 +464,6 @@ struct HW4Handler : public CarManagerBase
                     if (onSend)
                         onSend(1, true);
                 }
-            }
-            if (index == 2 && ADEnabled && (!checkAD || checkAD()))
-            {
-                frame.data[7] &= ~(0x07 << 4);
-                frame.data[7] |= (speedProfile & 0x07) << 4;
-                uint8_t off = hw4OffsetRuntime;
-                if (off > 0)
-                    frame.data[1] = (frame.data[1] & 0xC0) | (off & 0x3F);
-                framesSent++;
-                driver.send(frame);
-                if (onSend)
-                    onSend(2, true);
             }
             if (index == 0 && enablePrint)
             {

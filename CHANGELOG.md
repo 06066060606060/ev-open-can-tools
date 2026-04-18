@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.2-beta.2] - 2026-04-18
+
+### Changed
+- Dashboard no longer exposes or persists speed profile control; follow distance and the derived profile remain visible as read-only status
+- Dashboard profile-related boot logging and legacy NVS cleanup now reflect the new plugin-managed model without stale `SP` or profile-lock state
+
+### Fixed
+- Dashboard core no longer injects speed profile or speed offset back onto CAN for Legacy, HW3, or HW4 handlers; those values are now observational unless a plugin explicitly modifies those frames
+- Dashboard plugin toggles now apply immediately and batch their persistence, avoiding repeated Wi-Fi stalls while enabling or disabling multiple plugins
+
 ## [2.3.2-beta.1] - 2026-04-18
 
 ### Changed

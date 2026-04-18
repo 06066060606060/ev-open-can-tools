@@ -50,8 +50,6 @@ inline Shared<bool> isaSpeedChimeSuppressRuntime{kIsaSpeedChimeSuppressDefaultEn
 inline Shared<bool> emergencyVehicleDetectionRuntime{kEmergencyVehicleDetectionDefaultEnabled};
 inline Shared<bool> enhancedAutopilotRuntime{kEnhancedAutopilotDefaultEnabled};
 inline Shared<bool> nagKillerRuntime{kNagKillerDefaultEnabled};
-inline Shared<bool> speedProfileLocked{false};
-inline Shared<uint8_t> hw4OffsetRuntime{0};
 
 inline uint8_t readMuxID(const CanFrame &frame)
 {

@@ -61,18 +61,6 @@ static constexpr uint8_t kDashUnsetU8 = 0xFF;
 
 static Preferences prefs;
 
-struct Features
-{
-    bool ADEnabled = true;
-    bool nagSuppress = kEnhancedAutopilotDefaultEnabled;
-    bool summonUnlock = kEnhancedAutopilotDefaultEnabled;
-    bool isaSuppress = kIsaSpeedChimeSuppressDefaultEnabled;
-    bool evDetection = kEmergencyVehicleDetectionDefaultEnabled;
-    uint8_t hw4Offset = 0;
-};
-
-static Features feat;
-
 static CarManagerBase *dashHandler = nullptr;
 static CanDriver *dashDriver = nullptr;
 #if defined(DRIVER_ESP32_EXT_MCP2515)
@@ -103,7 +91,6 @@ static const uint8_t mcpEflg = 0;
 
 static uint8_t hwMode = DASH_DEFAULT_HW;
 static bool canActive = kDashInjectionDefaultEnabled;
-static bool bypassTlssc = kBypassTlsscRequirementDefaultEnabled;
 
 // WiFi AP (hotspot) — overridable at runtime
 static char apSSID[33] = "";
@@ -129,7 +116,9 @@ static void dashApplyFilters();
 static void dashReapplyFiltersWithPlugins();
 static void dashApplyRuntimeState();
 static void dashRestorePluginStates();
-static void dashClearLegacyFeaturePrefs();
+static void dashClearLegacyOptionPrefs();
+static void dashSchedulePluginStateSave(unsigned long delayMs = 750);
+static void dashFlushPluginStatesIfDue();
 
 // CAN recorder
 #define REC_CAP 2000
@@ -168,6 +157,8 @@ struct PluginTestState
     unsigned long nextSendAt = 0;
 };
 static PluginTestState pluginTestState;
+static bool pluginStatesDirty = false;
+static unsigned long pluginStatesFlushAt = 0;
 
 enum DashWriteProbeState : uint8_t
 {
@@ -378,12 +369,12 @@ static String jsonEscape(const String &s)
 
 static bool dashCheckADEnabled()
 {
-    return canActive && feat.ADEnabled;
+    return canActive;
 }
 
-static bool dashCheckNagEnabled()
+static bool dashCheckNagDisabled()
 {
-    return canActive && feat.nagSuppress;
+    return false;
 }
 
 static void dashApplyRuntimeState()
@@ -393,13 +384,12 @@ static void dashApplyRuntimeState()
     isaSpeedChimeSuppressRuntime = false;
     enhancedAutopilotRuntime = false;
     nagKillerRuntime = false;
-    hw4OffsetRuntime = 0;
 
     if (dashHandler)
     {
         dashHandler->checkAD = dashCheckADEnabled;
-        dashHandler->checkNag = dashCheckNagEnabled;
-        if (!canActive || !feat.ADEnabled)
+        dashHandler->checkNag = dashCheckNagDisabled;
+        if (!canActive)
             dashHandler->ADEnabled = false;
     }
 
@@ -414,10 +404,8 @@ static void dashSavePrefs()
     prefs.begin(PREFS_NS, false);
     prefs.putUChar("hw", hwMode);
     prefs.putUChar("hw_def", DASH_DEFAULT_HW);
-    prefs.putUChar("sp", dashHandler ? (int)dashHandler->speedProfile : 1);
     prefs.putBool("can", canActive);
     prefs.putBool("eprn", dashHandler ? (bool)dashHandler->enablePrint : true);
-    prefs.putBool("sp_lock", (bool)speedProfileLocked);
     prefs.end();
 }
 
@@ -441,7 +429,7 @@ static void dashToggleCanActive(const char *reason = nullptr)
     dashSetCanActive(!canActive, reason);
 }
 
-static void dashClearLegacyFeaturePrefs()
+static void dashClearLegacyOptionPrefs()
 {
     static const char *const keys[] = {
         "fAD",
@@ -451,6 +439,8 @@ static void dashClearLegacyFeaturePrefs()
         "f_isa",
         "f_evd",
         "f_h4o",
+        "sp",
+        "sp_lock",
     };
 
     bool removed = false;
@@ -463,13 +453,13 @@ static void dashClearLegacyFeaturePrefs()
     }
 
     if (removed)
-        dashLog("[BOOT] Cleared legacy feature prefs from NVS");
+        dashLog("[BOOT] Cleared legacy dashboard prefs from NVS");
 }
 
 static void dashLoadPrefs()
 {
     prefs.begin(PREFS_NS, false);
-    dashClearLegacyFeaturePrefs();
+    dashClearLegacyOptionPrefs();
     bool hasStoredHw = prefs.isKey("hw");
     uint8_t storedHw = prefs.getUChar("hw", DASH_DEFAULT_HW);
     uint8_t storedDefaultHw = prefs.getUChar("hw_def", kDashUnsetU8);
@@ -492,23 +482,11 @@ static void dashLoadPrefs()
     if (storedDefaultHw != DASH_DEFAULT_HW)
         prefs.putUChar("hw_def", DASH_DEFAULT_HW);
     canActive = prefs.getBool("can", kDashInjectionDefaultEnabled);
-    bypassTlssc = false;
-    feat.ADEnabled = true;
-    feat.nagSuppress = false;
-    feat.summonUnlock = false;
-    feat.isaSuppress = false;
-    feat.evDetection = false;
-    feat.hw4Offset = 0;
-    speedProfileLocked = prefs.getBool("sp_lock", false);
-    uint8_t sp = prefs.getUChar("sp", 1);
     bool ep = prefs.getBool("eprn", true);
 
     dashApplyRuntimeState();
     if (dashHandler)
-    {
-        dashHandler->speedProfile = sp;
         dashHandler->enablePrint = ep;
-    }
     // Load WiFi AP overrides (hotspot name/password)
     String apSsidPref = prefs.isKey("ap_ssid") ? prefs.getString("ap_ssid", "") : "";
     String apPassPref = prefs.isKey("ap_pass") ? prefs.getString("ap_pass", "") : "";
@@ -543,7 +521,7 @@ static void dashLoadPrefs()
     if (migratedHw)
         dashLog("[BOOT] HW default synced to " + String(hwMode == 0 ? "LEGACY" : hwMode == 1 ? "HW3"
                                                                                            : "HW4"));
-    dashLog("[BOOT] Prefs loaded HW=" + String(hwMode) + " SP=" + String(sp));
+    dashLog("[BOOT] Prefs loaded HW=" + String(hwMode));
     dashLog("[BOOT] canActive=" + String(canActive ? "YES" : "NO"));
 }
 
@@ -575,6 +553,21 @@ static void dashSavePluginState(const PluginData &plugin)
     pluginPrefs.end();
 }
 
+static void dashSaveAllPluginStates()
+{
+    Preferences pluginPrefs;
+    if (!pluginPrefs.begin(PREFS_NS, false))
+        return;
+
+    for (uint8_t i = 0; i < pluginCount; i++)
+    {
+        char key[13];
+        dashPluginStateKey(pluginStore[i].filename, key, sizeof(key));
+        pluginPrefs.putBool(key, pluginStore[i].enabled);
+    }
+    pluginPrefs.end();
+}
+
 static void dashClearPluginState(const PluginData &plugin)
 {
     Preferences pluginPrefs;
@@ -600,6 +593,25 @@ static void dashRestorePluginStates()
         pluginStore[i].enabled = pluginPrefs.getBool(key, pluginStore[i].enabled);
     }
     pluginPrefs.end();
+}
+
+static void dashSchedulePluginStateSave(unsigned long delayMs)
+{
+    pluginStatesDirty = true;
+    pluginStatesFlushAt = millis() + delayMs;
+}
+
+static void dashFlushPluginStatesIfDue()
+{
+    if (!pluginStatesDirty)
+        return;
+
+    unsigned long now = millis();
+    if ((long)(now - pluginStatesFlushAt) < 0)
+        return;
+
+    dashSaveAllPluginStates();
+    pluginStatesDirty = false;
 }
 
 // MCP2515-only: fine-grained filter register reload on HW mode switch.
@@ -714,8 +726,6 @@ static void handleStatus()
     j += gtwAp;
     j += ",\"AD\":";
     j += ADActive ? "true" : "false";
-    j += ",\"fAD\":";
-    j += bypassTlssc ? "true" : "false";
     j += ",\"eprn\":";
     j += ep ? "true" : "false";
     j += ",\"can\":";
@@ -768,21 +778,7 @@ static void handleStatus()
             j += ",";
         j += String(dashWriteProbe.rxData[i]);
     }
-    j += "]},\"feat\":{\"AD\":";
-    j += feat.ADEnabled ? "true" : "false";
-    j += ",\"nag\":";
-    j += feat.nagSuppress ? "true" : "false";
-    j += ",\"summon\":";
-    j += feat.summonUnlock ? "true" : "false";
-    j += ",\"isa\":";
-    j += feat.isaSuppress ? "true" : "false";
-    j += ",\"evd\":";
-    j += feat.evDetection ? "true" : "false";
-    j += ",\"h4o\":";
-    j += feat.hw4Offset;
-    j += ",\"spl\":";
-    j += (bool)speedProfileLocked ? "true" : "false";
-    j += "},\"mux\":[";
+    j += "]},\"mux\":[";
     for (int i = 0; i < 3; i++)
     {
         if (i)
@@ -809,20 +805,6 @@ static void handleConfig()
                                                                     : "HW4"));
         }
     }
-    if (server.hasArg("sp") && dashHandler)
-    {
-        uint8_t v = server.arg("sp").toInt();
-        if (v <= 4)
-        {
-            dashHandler->speedProfile = v;
-            dashLog("[CFG] Profile=" + String(v));
-        }
-    }
-    if (server.hasArg("spl"))
-    {
-        speedProfileLocked = server.arg("spl") == "1";
-        dashLog("[CFG] Profile lock " + String((bool)speedProfileLocked ? "ON" : "OFF"));
-    }
     if (server.hasArg("can"))
         canActive = server.arg("can") == "1";
     if (hwChanged)
@@ -835,13 +817,13 @@ static void handleConfig()
     server.send(200, "application/json", "{\"ok\":true}");
 }
 
-static void handleFeatures()
+static void handleLoggingConfig()
 {
     if (server.hasArg("eprn") && dashHandler)
     {
         bool ep = server.arg("eprn") == "1";
         dashHandler->enablePrint = ep;
-        dashLog("[FEAT] Logging " + String(ep ? "ON" : "OFF"));
+        dashLog("[CFG] Logging " + String(ep ? "ON" : "OFF"));
     }
     dashApplyRuntimeState();
     dashSavePrefs();
@@ -1325,12 +1307,16 @@ static void handlePluginToggle()
     if (idx < pluginCount)
     {
         pluginStore[idx].enabled = !pluginStore[idx].enabled;
-        dashSavePluginState(pluginStore[idx]);
+        dashSchedulePluginStateSave();
         dashReapplyFiltersWithPlugins();
         dashLog("[PLG] " + String(pluginStore[idx].name) + " " +
                 String(pluginStore[idx].enabled ? "enabled" : "disabled"));
+        server.send(200, "application/json",
+                    String("{\"ok\":true,\"enabled\":") +
+                        (pluginStore[idx].enabled ? "true" : "false") + "}");
+        return;
     }
-    server.send(200, "application/json", "{\"ok\":true}");
+    server.send(200, "application/json", "{\"ok\":false}");
 }
 
 static void handlePluginRemove()
@@ -2351,10 +2337,7 @@ static void dashSwapHandler(uint8_t mode)
         return;
     CarManagerBase *next = handlerPool[mode];
     if (dashHandler)
-    {
-        next->speedProfile = (int)dashHandler->speedProfile;
         next->enablePrint = (bool)dashHandler->enablePrint;
-    }
     appActiveHandler = next;
     dashHandler = next;
     dashApplyRuntimeState();
@@ -2445,7 +2428,7 @@ static void mcpDashboardSetup(CarManagerBase *handler, CanDriver *driver)
     server.on("/", HTTP_GET, handleRoot);
     server.on("/status", HTTP_GET, handleStatus);
     server.on("/config", HTTP_POST, handleConfig);
-    server.on("/features", HTTP_POST, handleFeatures);
+    server.on("/logging", HTTP_POST, handleLoggingConfig);
     server.on("/frames", HTTP_GET, handleFrames);
     server.on("/log", HTTP_GET, handleLog);
     server.on("/reset_stats", HTTP_POST, handleResetStats);
@@ -2488,6 +2471,7 @@ static void mcpDashboardLoop()
 {
     if (Update.isRunning())
         return;
+    dashFlushPluginStatesIfDue();
     dashPluginTestTick();
     dashCheckBusHealth();
     if (canOnline && millis() - lastFrameMs > 10000)
