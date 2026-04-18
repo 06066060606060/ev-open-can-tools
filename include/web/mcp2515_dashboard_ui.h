@@ -262,24 +262,6 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
       <div class="tgl-track"><div class="tgl-thumb"></div></div></label>
   </div>
 
-  <div class="feat-row">
-    <div class="feat-info">
-      <div class="feat-name">Nag Suppression</div>
-      <div class="feat-desc">Remove hands-on-wheel warning (ECE R79)</div>
-    </div>
-    <label class="tgl"><input type="checkbox" id="tgl-nag" checked onchange="pushFeat()">
-      <div class="tgl-track"><div class="tgl-thumb"></div></div></label>
-  </div>
-
-  <div class="feat-row">
-    <div class="feat-info">
-      <div class="feat-name">Summon EU Unlock</div>
-      <div class="feat-desc">Remove Smart Summon distance restriction</div>
-    </div>
-    <label class="tgl"><input type="checkbox" id="tgl-summon" checked onchange="pushFeat()">
-      <div class="tgl-track"><div class="tgl-thumb"></div></div></label>
-  </div>
-
   <div class="feat-row hw4-only" id="row-isa">
     <div class="feat-info">
       <div class="feat-name">ISA Chime Suppress</div>
@@ -827,8 +809,6 @@ async function pushCfg(){
 
 async function pushFeat(){
   const body='AD='+($('tgl-AD').checked?'1':'0')
-    +'&nag='+($('tgl-nag').checked?'1':'0')
-    +'&summon='+($('tgl-summon').checked?'1':'0')
     +'&isa='+($('tgl-isa').checked?'1':'0')
     +'&evd='+($('tgl-evd').checked?'1':'0')
     +'&fAD='+($('tgl-fAD').checked?'1':'0')
@@ -998,7 +978,7 @@ async function poll(){
     updateInjectButtons(d.ci);
     updateSniffIdToggle();
     updSeg($('hw-seg'),d.hw,'hw-btn');buildPills();updateHW4(d.hw);
-    if(d.feat){$('tgl-AD').checked=d.feat.AD;$('tgl-nag').checked=d.feat.nag;$('tgl-summon').checked=d.feat.summon;$('tgl-isa').checked=d.feat.isa;$('tgl-evd').checked=d.feat.evd;if(typeof d.feat.h4o!=='undefined'){state.h4o=d.feat.h4o;buildPills();}if(typeof d.feat.spl!=='undefined'){state.spl=d.feat.spl;}}
+    if(d.feat){$('tgl-AD').checked=d.feat.AD;$('tgl-isa').checked=d.feat.isa;$('tgl-evd').checked=d.feat.evd;if(typeof d.feat.h4o!=='undefined'){state.h4o=d.feat.h4o;buildPills();}if(typeof d.feat.spl!=='undefined'){state.spl=d.feat.spl;}}
     if(typeof d.fAD!=='undefined')$('tgl-fAD').checked=d.fAD;
     if(typeof d.eprn!=='undefined')$('tgl-eprn').checked=d.eprn;
     }catch(e){}

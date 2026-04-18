@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Dashboard Features card no longer exposes Nag Suppression or Summon EU Unlock; those overrides can now be handled through plugins instead
+
 ## [2.2.0] - 2026-04-18
 
 First stable release of the 2.2 series. Bundles all changes from 2.2.0-beta.1 through 2.2.0-beta.14.
