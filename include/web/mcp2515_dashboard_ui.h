@@ -85,20 +85,14 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 
 /* Speed pills */
 .pills{display:flex;gap:6px;flex-wrap:wrap}
-.pill{flex:1;min-width:60px;padding:9px 8px;border:1px solid var(--bd);border-radius:9px;
-  font-size:12px;font-weight:600;cursor:pointer;background:var(--bg);color:var(--tx2);
-  transition:all .18s;text-align:center;font-family:inherit}
-.pill.active{background:var(--accBg);border-color:var(--accBd);color:var(--acc)}
-.pill:hover:not(.active){border-color:var(--bd2);color:var(--tx)}
-
-/* Feature rows */
-.feat-row{display:flex;align-items:center;justify-content:space-between;
+/* Settings rows */
+.setting-row{display:flex;align-items:center;justify-content:space-between;
   padding:12px 0;border-bottom:1px solid var(--bd)}
-.feat-row:last-of-type{border-bottom:none;padding-bottom:0}
-.feat-row:first-of-type{padding-top:0}
-.feat-info{flex:1;min-width:0}
-.feat-name{font-size:13px;font-weight:500;color:var(--tx)}
-.feat-desc{font-size:11px;color:var(--tx3);margin-top:2px}
+.setting-row:last-of-type{border-bottom:none;padding-bottom:0}
+.setting-row:first-of-type{padding-top:0}
+.setting-info{flex:1;min-width:0}
+.setting-name{font-size:13px;font-weight:500;color:var(--tx)}
+.setting-desc{font-size:11px;color:var(--tx3);margin-top:2px}
 .hw4-only.hidden{display:none}
 
 /* Toggle */
@@ -149,6 +143,14 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 .mux-tbl td{padding:5px 8px;color:var(--tx2);border-bottom:1px solid var(--bd)}
 .mux-tbl tr:last-child td{border-bottom:none}
 .mux-tbl td:first-child{color:var(--acc);font-weight:600}
+
+/* Last write check */
+.probe-status{font-size:13px;font-weight:600}
+.probe-note{font-size:11px;color:var(--tx3);line-height:1.6;margin-top:10px}
+.probe-block{margin-top:12px;padding-top:12px;border-top:1px solid var(--bd)}
+.probe-meta{font-size:11px;color:var(--tx3);margin-bottom:4px}
+.probe-label{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.probe-hex{font-family:'SF Mono','Courier New',monospace;font-size:12px;color:var(--tx2);word-break:break-all}
 
 /* Buttons */
 .btn-row{display:flex;gap:8px;margin-top:14px}
@@ -250,19 +252,14 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 </div>
 
 <div class="card">
-  <div class="card-hdr"><div class="card-title">Speed Profile</div><div class="card-meta">AD aggressiveness &bull; Auto follows stalk</div></div>
-  <div class="pills" id="sp-pills"></div>
-</div>
+  <div class="card-hdr"><div class="card-title">Controls</div></div>
 
-<div class="card">
-  <div class="card-hdr"><div class="card-title">Features</div></div>
-
-  <div class="feat-row">
-    <div class="feat-info">
-      <div class="feat-name">Enable Logging</div>
-      <div class="feat-desc">Toggle serial and dashboard log output</div>
+  <div class="setting-row">
+    <div class="setting-info">
+      <div class="setting-name">Enable Logging</div>
+      <div class="setting-desc">Toggle serial and dashboard log output</div>
     </div>
-    <label class="tgl"><input type="checkbox" id="tgl-eprn" checked onchange="pushFeat()">
+    <label class="tgl"><input type="checkbox" id="tgl-eprn" checked onchange="pushLogging()">
       <div class="tgl-track"><div class="tgl-thumb"></div></div></label>
   </div>
 
@@ -320,21 +317,40 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 
 <div class="card">
   <div class="card-hdr">
+    <div class="card-title">Last Write Check</div>
+    <div class="card-meta">Best effort</div>
+  </div>
+  <div class="probe-status v-dim" id="probe-status">No injected frame yet</div>
+  <div class="probe-note">Shows the last injected frame and the latest bus frame with the same ID and mux. Useful for spotting overwrite; a match is not proof that a module accepted the change.</div>
+  <div class="probe-block">
+    <div class="probe-label">Sent</div>
+    <div class="probe-meta" id="probe-tx-meta">—</div>
+    <div class="probe-hex" id="probe-tx">—</div>
+  </div>
+  <div class="probe-block">
+    <div class="probe-label">Bus</div>
+    <div class="probe-meta" id="probe-rx-meta">—</div>
+    <div class="probe-hex" id="probe-rx">—</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-hdr">
     <div class="card-title">WiFi Hotspot <span onclick="toggleInfo('ap-info')" style="color:var(--tx3);cursor:pointer;font-size:12px;margin-left:4px" title="About WiFi storage">&#9432;</span></div>
     <div class="card-meta"><span id="ap-stored" style="margin-right:8px"></span><span id="ap-clients">0 clients</span></div>
   </div>
   <div id="ap-info" style="display:none;margin-bottom:10px;padding:10px;background:var(--bg2);border:1px solid var(--bd);border-radius:6px;font-size:12px;color:var(--tx3);line-height:1.5">
     Stored in NVS (non-volatile storage). The SSID and password survive firmware updates and reboots. Only a full factory erase via USB clears them.
   </div>
-  <div class="feat-desc" style="margin-bottom:8px">Change the WiFi hotspot name and password</div>
+  <div class="setting-desc" style="margin-bottom:8px">Change the WiFi hotspot name and password</div>
   <div style="display:flex;gap:6px;margin-bottom:6px">
     <input class="sniff-input" id="ap-ssid" placeholder="Hotspot Name" style="flex:1">
     <input class="sniff-input" id="ap-pass" placeholder="New Password (min 8)" type="password" style="flex:1">
   </div>
-  <div class="feat-row" style="padding:8px 0">
-    <div class="feat-info">
-      <div class="feat-name">Hide SSID</div>
-      <div class="feat-desc">Don't broadcast the hotspot name &mdash; clients must enter it manually</div>
+  <div class="setting-row" style="padding:8px 0">
+    <div class="setting-info">
+      <div class="setting-name">Hide SSID</div>
+      <div class="setting-desc">Don't broadcast the hotspot name &mdash; clients must enter it manually</div>
     </div>
     <label class="tgl"><input type="checkbox" id="ap-hidden"><div class="tgl-track"><div class="tgl-thumb"></div></div></label>
   </div>
@@ -350,7 +366,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
     <div class="card-title">WiFi Internet <span id="wifi-stored" style="font-size:11px;font-weight:normal;color:var(--tx3)"></span></div>
     <div class="card-meta" id="wifi-status">Not configured</div>
   </div>
-  <div class="feat-desc" style="margin-bottom:8px">Connect to your home WiFi. Required for firmware updates and plugin downloads. Stored in NVS &mdash; survives firmware updates.</div>
+  <div class="setting-desc" style="margin-bottom:8px">Connect to your home WiFi. Required for firmware updates and plugin downloads. Stored in NVS &mdash; survives firmware updates.</div>
   <div style="display:flex;gap:6px;margin-bottom:6px">
     <input class="sniff-input" id="wifi-ssid" placeholder="WiFi SSID" style="flex:1">
     <button class="sniff-btn" onclick="scanWifi()" id="scan-btn">Scan</button>
@@ -385,12 +401,12 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
   </div>
 
   <div id="plg-info" style="display:none;margin-bottom:12px;padding:10px;background:var(--bg2);border:1px solid var(--bd);border-radius:6px;font-size:12px;color:var(--tx3);line-height:1.5">
-    Plugins are JSON rules that modify CAN messages in real time. Install via URL, file upload or paste. A &#9888; marks conflicts with base firmware handlers &mdash; plugin rules then run <b>after</b> the original handler.
+    Plugins are JSON rules that modify CAN messages in real time. Install via URL, file upload or paste.
     <div style="margin-top:6px"><a href="https://ev-open-can-tools.github.io/ev-open-can-tools/docs/plugins.html" target="_blank" rel="noopener" style="color:var(--acc);text-decoration:none">Documentation &amp; examples &rarr;</a></div>
   </div>
 
   <div style="margin-bottom:14px">
-    <div class="feat-name" style="margin-bottom:8px">Install Plugin</div>
+    <div class="setting-name" style="margin-bottom:8px">Install Plugin</div>
     <div style="font-size:11px;color:var(--tx3);margin-bottom:8px" id="plg-limit">Maximum plugins: --</div>
     <div style="display:flex;gap:6px;margin-bottom:8px">
       <input class="sniff-input" id="plg-url" placeholder="Plugin JSON URL (https://...)" style="flex:1">
@@ -401,7 +417,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
       <button class="sniff-btn" onclick="$('plg-file').click()">Upload .json</button>
       <span style="font-size:11px;color:var(--tx3)" id="plg-status"></span>
     </div>
-    <div class="feat-name" style="margin-bottom:6px">Paste JSON (offline)</div>
+    <div class="setting-name" style="margin-bottom:6px">Paste JSON (offline)</div>
     <textarea id="plg-paste" placeholder='{"name":"...","version":"1.0","rules":[...]}' style="width:100%;height:80px;resize:vertical;background:var(--bg2);color:var(--tx);border:1px solid var(--bd);border-radius:6px;padding:8px;font-family:monospace;font-size:11px;box-sizing:border-box;margin-bottom:6px"></textarea>
     <button class="sniff-btn" onclick="pastePlugin()">Install from JSON</button>
   </div>
@@ -441,7 +457,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
     <pre id="pe-preview" style="max-height:200px;overflow:auto;background:var(--bg2);border:1px solid var(--bd);border-radius:6px;padding:8px;font-size:11px;color:var(--tx2);margin-top:6px;white-space:pre-wrap;word-break:break-all"></pre>
   </details>
   <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bd)">
-    <div class="feat-name" style="margin-bottom:6px">Rule Test</div>
+    <div class="setting-name" style="margin-bottom:6px">Rule Test</div>
     <div style="font-size:11px;color:var(--tx3);line-height:1.5;margin-bottom:8px">
       Choose one rule from the editor, enter the base 8-byte frame, then send the resulting modified frame on CAN. Count = how many times, interval = how fast.
     </div>
@@ -472,17 +488,17 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
     <div class="card-meta" id="fw-ver"></div>
   </div>
   <div style="margin-bottom:10px">
-    <div class="feat-row">
-      <div class="feat-info">
-        <div class="feat-name">Beta Channel</div>
-        <div class="feat-desc">Include pre-release / beta firmware versions</div>
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-name">Beta Channel</div>
+        <div class="setting-desc">Include pre-release / beta firmware versions</div>
       </div>
       <label class="tgl"><input type="checkbox" id="beta-tgl" onchange="toggleBeta()"><div class="tgl-track"><div class="tgl-thumb"></div></div></label>
     </div>
-    <div class="feat-row">
-      <div class="feat-info">
-        <div class="feat-name">Auto-Update on Boot</div>
-        <div class="feat-desc">Check and install updates automatically ~15 s after WiFi connects</div>
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-name">Auto-Update on Boot</div>
+        <div class="setting-desc">Check and install updates automatically ~15 s after WiFi connects</div>
       </div>
       <label class="tgl"><input type="checkbox" id="auto-upd-tgl" onchange="toggleAutoUpdate()"><div class="tgl-track"><div class="tgl-thumb"></div></div></label>
     </div>
@@ -584,15 +600,15 @@ const HW=['Legacy','HW3','HW4'];
 const SP3=['Chill','Normal','Hurry'];
 const SP4=['Chill','Normal','Hurry','Max','Sloth'];
 const $=id=>document.getElementById(id);
-function spNames(){return state.hw===2?SP4:SP3;}
-const H4O=[{l:'Off',v:0},{l:'+5 km/h',v:7},{l:'+7 km/h',v:10},{l:'+10 km/h',v:14},{l:'+15 km/h',v:21}];
-let state={hw:1,sp:1,can:true,h4o:0,spl:false};
-let sniffPaused=true,sniffFrames=[];
+function profileNamesForHw(hw){return hw===2?SP4:SP3;}
+let state={hw:1,can:true};
+let sniffPaused=false,sniffFrames=[];
 let sniffShowDbcIds=localStorage.getItem('sniffIdMode')==='dbc';
 let otaFile=null;
 let otaUser=localStorage.getItem('otaU')||'',otaPass=localStorage.getItem('otaP')||'';
 let logSince=0;
 let installedPlugins=[];
+let pluginMax=0;
 let peLoadedPluginName='';
 let peTestPollTimer=null;
 let pluginDetailOpen={};
@@ -746,24 +762,6 @@ function toggleTheme(){
   });
 })();
 
-function buildPills(){
-  const ns=spNames(),c=$('sp-pills');c.innerHTML='';
-  const auto=document.createElement('button');
-  auto.className='pill'+(!state.spl?' active':'');
-  auto.textContent='Auto';auto.onclick=()=>setSPL(false);c.appendChild(auto);
-  ns.forEach((n,i)=>{
-    const b=document.createElement('button');
-    b.className='pill'+(state.spl&&i===state.sp?' active':'');
-    b.dataset.v=i;b.textContent=n;b.onclick=()=>setSP(i);c.appendChild(b);
-  });
-  const hc=$('h4o-pills');if(!hc)return;hc.innerHTML='';
-  H4O.forEach(o=>{
-    const b=document.createElement('button');
-    b.className='pill'+(o.v===state.h4o?' active':'');
-    b.textContent=o.l;b.onclick=()=>{state.h4o=o.v;buildPills();pushFeat();};hc.appendChild(b);
-  });
-}
-
 function updateHW4(hw){
   document.querySelectorAll('.hw4-only').forEach(el=>el.classList.toggle('hidden',hw!==2));
 }
@@ -772,9 +770,7 @@ function updSeg(el,v,cls){
   el.querySelectorAll('.'+cls).forEach(b=>b.classList.toggle('active',parseInt(b.dataset.v)===v));
 }
 
-function setHW(v){state.hw=v;updSeg($('hw-seg'),v,'hw-btn');buildPills();updateHW4(v);updateSniffIdToggle();renderSniffer();pushCfg();}
-function setSP(v){state.sp=v;state.spl=true;buildPills();pushCfg();}
-function setSPL(v){state.spl=v;buildPills();pushCfg();}
+function setHW(v){state.hw=v;updSeg($('hw-seg'),v,'hw-btn');updateHW4(v);updateSniffIdToggle();renderSniffer();pushCfg();}
 
 function updateInjectButtons(active){
   $('btn-stop').style.display=active?'':'none';
@@ -800,18 +796,18 @@ function toggleSniffIdMode(){
 }
 
 async function pushCfg(){
-  const body='hw='+state.hw+'&sp='+state.sp+'&can='+(state.can?'1':'0')+'&spl='+(state.spl?'1':'0');
+  const body='hw='+state.hw+'&can='+(state.can?'1':'0');
   try{await fetch('/config',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});}catch(e){}
 }
 
-async function pushFeat(){
+async function pushLogging(){
   const body='eprn='+($('tgl-eprn').checked?'1':'0');
-  try{await fetch('/features',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});}catch(e){}
+  try{await fetch('/logging',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});}catch(e){}
   poll();
 }
 
 async function emergencyStop(){if(!await dashConfirm('Stop injecting? This remains disabled after reboot until you press Resume Injection.','Stop injection','Stop'))return;try{await fetch('/disable',{method:'POST'});}catch(e){}poll();}
-async function resumeInj(){try{await fetch('/config',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'hw='+state.hw+'&sp='+state.sp+'&can=1'});}catch(e){}poll();}
+async function resumeInj(){try{await fetch('/config',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'hw='+state.hw+'&can=1'});}catch(e){}poll();}
 async function reboot(){if(!await dashConfirm('Reboot device?','Reboot','Reboot'))return;try{await fetch('/reboot',{method:'POST'});}catch(e){}}
 
 function fmtUp(s){
@@ -819,7 +815,46 @@ function fmtUp(s){
   if(s<3600)return Math.floor(s/60)+'m '+String(s%60).padStart(2,'0')+'s';
   return Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'m';
 }
+function fmtAgeMs(ms){
+  if(ms<1000)return ms+' ms';
+  if(ms<10000)return (ms/1000).toFixed(1)+' s';
+  if(ms<60000)return Math.round(ms/1000)+' s';
+  return fmtUp(Math.floor(ms/1000));
+}
 function toHex(n,p){return n.toString(16).toUpperCase().padStart(p,'0')}
+function fmtProbeData(data,dlc){
+  if(!Array.isArray(data)||!dlc)return '—';
+  return data.slice(0,dlc).map(v=>toHex((v||0)&255,2)).join(' ');
+}
+function renderWriteProbe(p){
+  const status=$('probe-status');
+  if(!p||!p.active){
+    status.textContent='No injected frame yet';
+    status.className='probe-status v-dim';
+    $('probe-tx-meta').textContent='—';
+    $('probe-tx').textContent='—';
+    $('probe-rx-meta').textContent='—';
+    $('probe-rx').textContent='—';
+    return;
+  }
+  const id='CAN 0x'+toHex((p.id||0)&0x7FF,3)+(p.mux>=0?' · mux '+p.mux:'');
+  $('probe-tx-meta').textContent=id+' · '+fmtAgeMs(p.txa||0)+' ago';
+  $('probe-tx').textContent=fmtProbeData(p.tx,p.txdlc);
+  if(p.hasrx){
+    $('probe-rx-meta').textContent=id+' · '+fmtAgeMs(p.rxa||0)+' ago';
+    $('probe-rx').textContent=fmtProbeData(p.rx,p.rxdlc);
+  }else{
+    $('probe-rx-meta').textContent='No matching RX frame seen yet';
+    $('probe-rx').textContent='—';
+  }
+  let text='Waiting for next matching bus frame';
+  let cls='probe-status v-acc';
+  if(p.state===2){text='Matching frame seen on bus';cls='probe-status v-ok';}
+  else if(p.state===3){text='Latest bus frame differs from injected frame';cls='probe-status v-warn';}
+  else if(p.state===4){text='Driver transmit failed';cls='probe-status v-err';}
+  status.textContent=text;
+  status.className=cls;
+}
 
 function renderEflg(e){
   const el=$('eflg-row');
@@ -955,7 +990,7 @@ async function poll(){
     $('s-txerr').textContent=d.txerr;
     $('s-txerr').className='stat-val '+(d.txerr>0?'v-warn':'v-dim');
     $('s-fd').textContent=d.fd||'—';
-    $('s-prof').textContent=spNames()[d.sp]||'—';
+    $('s-prof').textContent=profileNamesForHw(d.hw)[d.sp]||'—';
     $('s-soff').textContent=d.soff||'0';
     $('s-up').textContent=fmtUp(d.up);
     $('s-mcp-raw').textContent='EFLG: 0x'+toHex(d.eflg,2);
@@ -964,12 +999,12 @@ async function poll(){
     $('dot').className='sdot '+(d.txerr>5?'dot-warn':on?'dot-on':'dot-off');
     $('hdr-desc').textContent=on?(d.AD?'AD active — injecting':'CAN active — monitoring'):'Waiting for CAN frames';
     renderEflg(d.eflg);
+    renderWriteProbe(d.probe);
     if(d.mux){for(let i=0;i<3;i++){$(('m'+i+'rx')).textContent=d.mux[i].rx;$(('m'+i+'tx')).textContent=d.mux[i].tx;const e=$(('m'+i+'err'));e.textContent=d.mux[i].err;e.style.color=d.mux[i].err>0?'var(--err)':'';}}
-    state.hw=d.hw;state.sp=d.sp;state.can=d.ci;
+    state.hw=d.hw;state.can=d.ci;
     updateInjectButtons(d.ci);
     updateSniffIdToggle();
-    updSeg($('hw-seg'),d.hw,'hw-btn');buildPills();updateHW4(d.hw);
-    if(d.feat){if(typeof d.feat.h4o!=='undefined'){state.h4o=d.feat.h4o;buildPills();}if(typeof d.feat.spl!=='undefined'){state.spl=d.feat.spl;}}
+    updSeg($('hw-seg'),d.hw,'hw-btn');updateHW4(d.hw);
     if(typeof d.eprn!=='undefined')$('tgl-eprn').checked=d.eprn;
     }catch(e){}
   });
@@ -979,7 +1014,7 @@ function colorLog(l){
   if(l.includes('AD=ON')||l.includes('AD active'))return'<span class="lf">'+l+'</span>';
   if(l.match(/\[HW[34]\]|\[LEGACY\]|\[HW3\]/))return'<span class="lh">'+l+'</span>';
   if(l.includes('ERR')||l.includes('FAIL'))return'<span class="le">'+l+'</span>';
-  if(l.includes('[CFG]')||l.includes('[FEAT]'))return'<span class="lc">'+l+'</span>';
+  if(l.includes('[CFG]'))return'<span class="lc">'+l+'</span>';
   if(l.includes('[OK]')||l.includes('[BOOT]'))return'<span class="lf">'+l+'</span>';
   if(l.includes('[OTA]'))return'<span class="lo">'+l+'</span>';
   return l;
@@ -1174,8 +1209,13 @@ async function pastePlugin(){
 async function togglePlugin(idx){
   const beforeSig=pluginStateSignature(installedPlugins);
   try{
-    await fetchJsonWithTimeout('/plugin_toggle',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'idx='+idx},4000);
-    try{await refreshPluginsNow();}catch(e){await refreshPluginsAfterAction(beforeSig);}
+    const d=await fetchJsonWithTimeout('/plugin_toggle',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'idx='+idx},4000);
+    if(installedPlugins[idx]&&typeof d.enabled==='boolean'){
+      installedPlugins[idx].enabled=d.enabled;
+      renderPluginsState({plugins:installedPlugins,maxPlugins:pluginMax});
+    }else{
+      try{await refreshPluginsNow();}catch(e){await refreshPluginsAfterAction(beforeSig);}
+    }
   }catch(e){await refreshPluginsAfterAction(beforeSig);}
 }
 async function removePlugin(idx){
@@ -1227,7 +1267,8 @@ function renderPluginsState(d){
   const nextOpen={};
   installedPlugins.forEach(p=>{if(p&&p.name&&pluginDetailOpen[p.name])nextOpen[p.name]=true;});
   pluginDetailOpen=nextOpen;
-  const max=d.maxPlugins||0;
+  pluginMax=d.maxPlugins||pluginMax||0;
+  const max=pluginMax;
   $('plg-count').textContent=max?installedPlugins.length+' / '+max+' installed':installedPlugins.length+' installed';
   if($('plg-limit')){
     const full=max&&installedPlugins.length>=max;
@@ -1240,21 +1281,18 @@ function renderPluginsState(d){
     return;
   }
   el.innerHTML=installedPlugins.map((p,i)=>{
-    let hasConflict=p.details&&p.details.some(r=>r.conflict);
     let detailsOpen=!!pluginDetailOpen[p.name];
     let row='<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--bd)">';
-    row+='<div class="feat-row"><div class="feat-info" style="cursor:pointer" onclick="toggleDetails('+i+')">';
-    row+='<div class="feat-name">'+p.name+' <span style="color:var(--tx3);font-size:11px">v'+p.version+'</span>';
-    if(hasConflict) row+=' <span style="color:var(--err);font-size:11px">&#9888;</span>';
+    row+='<div class="setting-row"><div class="setting-info" style="cursor:pointer" onclick="toggleDetails('+i+')">';
+    row+='<div class="setting-name">'+p.name+' <span style="color:var(--tx3);font-size:11px">v'+p.version+'</span>';
     row+='</div>';
-    row+='<div class="feat-desc">'+p.rules+' rule'+(p.rules!==1?'s':'')+(p.author?' &bull; '+p.author:'')+' &bull; <span style="color:var(--acc);cursor:pointer">details</span></div>';
+    row+='<div class="setting-desc">'+p.rules+' rule'+(p.rules!==1?'s':'')+(p.author?' &bull; '+p.author:'')+' &bull; <span style="color:var(--acc);cursor:pointer">details</span></div>';
     row+='</div>';
     row+='<label class="tgl"><input type="checkbox" '+(p.enabled?'checked':'')+' onchange="togglePlugin('+i+')"><div class="tgl-track"><div class="tgl-thumb"></div></div></label>';
     row+='<button onclick="peLoadInstalledPlugin('+i+')" style="margin-left:8px;padding:4px 8px;border:1px solid var(--bd);border-radius:5px;background:transparent;color:var(--acc);cursor:pointer;font-size:10px;font-family:inherit">Edit</button>';
     row+='<button onclick="removePlugin('+i+')" style="margin-left:8px;padding:4px 8px;border:1px solid var(--errBd);border-radius:5px;background:transparent;color:var(--err);cursor:pointer;font-size:10px;font-family:inherit">X</button></div>';
     if(p.details){
       row+='<div id="plg-det-'+i+'" style="display:'+(detailsOpen?'block':'none')+'">';
-      if(hasConflict) row+='<div style="margin-top:6px;padding:6px 8px;background:var(--errBg,#3a1a1a);border:1px solid var(--errBd);border-radius:6px;font-size:11px;color:var(--err)">&#9888; Some CAN IDs overlap with base firmware. Plugin rules run <b>after</b> the original handler. Both will send modified frames.</div>';
       row+=renderPluginDetails(p.details);
       row+='</div>';
     }
@@ -1693,7 +1731,7 @@ async function peReset(){
 }
 
 dashboardPollTimers.push(setInterval(poll,2000));dashboardPollTimers.push(setInterval(pollLog,3000));dashboardPollTimers.push(setInterval(pollSniffer,1000));dashboardPollTimers.push(setInterval(pollPlugins,10000));dashboardPollTimers.push(setInterval(loadWifiStatus,10000));dashboardPollTimers.push(setInterval(loadApStatus,10000));
-initCardMinimizers();updateHW4(1);buildPills();syncSniffPauseButton();updateSniffIdToggle();renderSniffer();poll();pollLog();pollSniffer();pollRec();pollPlugins();loadWifiStatus();loadApStatus();loadUpdateInfo();loadCanPins();peRender();
+initCardMinimizers();updateHW4(1);updateSniffIdToggle();poll();pollLog();pollSniffer();pollRec();pollPlugins();loadWifiStatus();loadApStatus();loadUpdateInfo();loadCanPins();peRender();
 </script>
 </body>
 </html>
