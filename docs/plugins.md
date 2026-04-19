@@ -172,27 +172,7 @@ Suppresses the ISA speed warning chime on HW4 by setting bit 13 on CAN ID 921 (D
 }
 ```
 
-### Example 2: Track mode request
-
-Sets the track mode request bit on CAN ID 787 (EPAS_sysStatus).
-
-```json
-{
-  "name": "Track Mode",
-  "version": "1.0",
-  "rules": [
-    {
-      "id": 787,
-      "ops": [
-        { "type": "set_byte", "byte": 0, "val": 1, "mask": 3 },
-        { "type": "checksum" }
-      ]
-    }
-  ]
-}
-```
-
-### Example 3: Mux-specific modification
+### Example 2: Mux-specific modification
 
 Modifies only mux 0 of CAN ID 1021 (UI_autopilotControl) — sets bit 46 to enable AD.
 
@@ -212,7 +192,7 @@ Modifies only mux 0 of CAN ID 1021 (UI_autopilotControl) — sets bit 46 to enab
 }
 ```
 
-### Example 4: Multi-rule plugin
+### Example 3: Multi-rule plugin
 
 A plugin can contain multiple rules that target different CAN IDs or mux values.
 
