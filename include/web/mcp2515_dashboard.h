@@ -1237,10 +1237,16 @@ static bool pluginInstallJson(const String &json, const String &url)
         oldFilename = pluginStore[existing].filename;
     }
 
-    // Generate filename from name
+    // Keep path under SPIFFS 31-character object name limit: "/p_" + base + ".json".
     String fname = String(temp.name);
     fname.replace(" ", "_");
     fname.toLowerCase();
+    const size_t maxSpiffsPathLen = 31;
+    const size_t prefixLen = 3; // "/p_"
+    const size_t suffixLen = 5; // ".json"
+    const size_t maxBaseLen = maxSpiffsPathLen - prefixLen - suffixLen;
+    if (fname.length() > maxBaseLen)
+        fname = fname.substring(0, maxBaseLen);
     fname += ".json";
     strlcpy(temp.filename, fname.c_str(), sizeof(temp.filename));
     strlcpy(temp.sourceUrl, url.c_str(), sizeof(temp.sourceUrl));
