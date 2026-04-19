@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Did you read the documentation?
+    url: https://ev-open-can-tools.github.io/ev-open-can-tools/docs/
+    about: Before making an issue please read the documentation.
+  - name: Release notes
+    url: https://github.com/ev-open-can-tools/ev-open-can-tools/blob/main/CHANGELOG.md
+    about: Please view the release notes for any new version that perhaps fixes your issue
+  - name: Join our Discord
+    url: https://discord.gg/ZTQKAUTd2F
+    about: For questions, help, and community discussion, please use Discord.
