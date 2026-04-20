@@ -78,6 +78,9 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 .subsec:first-child{margin-top:0;padding-top:0;border-top:none}
 .subsec-head{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;column-gap:8px;margin-bottom:8px}
 .subsec-title{font-size:13px;font-weight:600;color:var(--tx);min-width:0}
+.title-help{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:6px;border:1px solid var(--bd2);border-radius:50%;font-size:10px;font-weight:700;color:var(--tx3);cursor:pointer;vertical-align:middle;line-height:1;background:transparent}
+.title-help:hover{border-color:var(--accBd);color:var(--acc);background:var(--accBg)}
+.inline-help-panel{display:none;margin:8px 0 0;padding:10px;background:var(--card2);border:1px solid var(--bd);border-radius:6px;font-size:12px;color:var(--tx3);line-height:1.5}
 .subsec-meta{font-size:11px;color:var(--tx3);justify-self:end;text-align:right;min-width:0}
 .subsec-btn{padding:4px 8px;font-size:10px;justify-self:end}
 .subsec.collapsed .subsec-head{margin-bottom:0}
@@ -257,11 +260,11 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 <div style="height:12px"></div>
 
 <div class="card">
-  <div class="card-hdr"><div class="card-title">CAN</div><div class="card-meta">Sniffer, recorder and bus status</div></div>
+  <div class="card-hdr"><div class="card-title">CAN <span class="title-help" onclick="return toggleHelp(this,event)" title="Live CAN tools for sniffing, recording, controller status and checking the last injected write.">?</span></div><div class="card-meta">Sniffer, recorder and bus status</div></div>
 
   <div class="subsec" data-subkey="can-sniffer">
     <div class="subsec-head">
-      <div class="subsec-title">CAN Sniffer</div>
+      <div class="subsec-title">CAN Sniffer <span class="title-help" onclick="return toggleHelp(this,event)" title="Shows recent CAN frames live. You can filter by ID or name, switch between wire IDs and DBC IDs, and pause the live view.">?</span></div>
       <div class="subsec-meta" id="sniff-count">0 frames</div>
     </div>
     <div class="subsec-body">
@@ -278,7 +281,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 
   <div class="subsec" data-subkey="can-recorder">
     <div class="subsec-head">
-      <div class="subsec-title">CAN Recorder</div>
+      <div class="subsec-title">CAN Recorder <span class="title-help" onclick="return toggleHelp(this,event)" title="Records live CAN traffic up to the frame limit and lets you download it as a CSV file.">?</span></div>
       <div class="subsec-meta" id="rec-meta">Idle</div>
     </div>
     <div class="subsec-body">
@@ -296,7 +299,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 
   <div class="subsec" data-subkey="can-controller">
     <div class="subsec-head">
-      <div class="subsec-title">CAN Controller</div>
+      <div class="subsec-title">CAN Controller <span class="title-help" onclick="return toggleHelp(this,event)" title="Shows CAN controller health, error flags and the RX, TX and error counters per mux.">?</span></div>
       <div class="subsec-meta" style="display:flex;align-items:center;gap:8px">
         <button onclick="resetStats()" style="font-size:10px;padding:2px 8px;border:1px solid var(--bd2);border-radius:5px;background:transparent;color:var(--tx3);cursor:pointer;font-family:inherit">Reset</button>
       </div>
@@ -314,12 +317,10 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 
   <div class="subsec" data-subkey="can-last-write-check">
     <div class="subsec-head">
-      <div class="subsec-title">Last Write Check</div>
-      <div class="subsec-meta">Best effort</div>
+      <div class="subsec-title">Last Write Check <span class="title-help" onclick="return toggleHelp(this,event)" title="Compares the last injected frame with the latest bus frame that has the same CAN ID and mux. Helpful to spot overwrites, but not proof that a module accepted the change.">?</span></div>
     </div>
     <div class="subsec-body">
       <div class="probe-status v-dim" id="probe-status">No injected frame yet</div>
-      <div class="probe-note">Shows the last injected frame and the latest bus frame with the same ID and mux. Useful for spotting overwrite; a match is not proof that a module accepted the change.</div>
       <div class="probe-block">
         <div class="probe-label">Sent</div>
         <div class="probe-meta" id="probe-tx-meta">—</div>
@@ -335,7 +336,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 </div>
 <div class="card">
   <div class="card-hdr">
-    <div class="card-title">Plugins <span onclick="toggleInfo('plg-info')" style="color:var(--tx3);cursor:pointer;font-size:12px;margin-left:4px" title="What are plugins?">&#9432;</span></div>
+    <div class="card-title">Plugins <span class="title-help" onclick="return toggleHelp(this,event)" data-help-target="plg-info" title="Install and manage JSON plugins that modify CAN messages in real time.">?</span></div>
     <div class="card-meta" id="plg-count">0 installed</div>
   </div>
 
@@ -345,7 +346,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
   </div>
 
   <div style="margin-bottom:14px">
-    <div class="setting-name" style="margin-bottom:8px">Install Plugin</div>
+    <div class="setting-name" style="margin-bottom:8px">Install Plugin <span class="title-help" onclick="return toggleHelp(this,event)" data-help-target="plg-info" title="Install a plugin from a URL or uploaded JSON file.">?</span></div>
     <div style="font-size:11px;color:var(--tx3);margin-bottom:8px" id="plg-limit">Maximum plugins: --</div>
     <div style="display:flex;gap:6px;margin-bottom:8px">
       <input class="sniff-input" id="plg-url" placeholder="Plugin JSON URL (https://...)" style="flex:1">
@@ -356,7 +357,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
       <button class="sniff-btn" onclick="$('plg-file').click()">Upload .json</button>
       <span style="font-size:11px;color:var(--tx3)" id="plg-status"></span>
     </div>
-    <div class="setting-name" style="margin-bottom:6px">Paste JSON (offline)</div>
+    <div class="setting-name" style="margin-bottom:6px">Paste JSON (offline) <span class="title-help" onclick="return toggleHelp(this,event)" title="Paste a full plugin JSON document directly into the editor below.">?</span></div>
     <textarea id="plg-paste" placeholder='{"name":"...","version":"1.0","rules":[...]}' style="width:100%;height:80px;resize:vertical;background:var(--bg2);color:var(--tx);border:1px solid var(--bd);border-radius:6px;padding:8px;font-family:monospace;font-size:11px;box-sizing:border-box;margin-bottom:6px"></textarea>
     <button class="sniff-btn" onclick="pastePlugin()">Install from JSON</button>
   </div>
@@ -370,7 +371,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 
 <div class="card">
   <div class="card-hdr">
-    <div class="card-title">Plugin Editor <span onclick="toggleInfo('pe-info')" style="color:var(--tx3);cursor:pointer;font-size:12px;margin-left:4px" title="About the editor">&#9432;</span></div>
+    <div class="card-title">Plugin Editor <span class="title-help" onclick="return toggleHelp(this,event)" data-help-target="pe-info" title="Build, edit and test plugin rules without writing JSON by hand.">?</span></div>
     <div class="card-meta" id="pe-count">0 rules</div>
   </div>
   <div id="pe-info" style="display:none;margin-bottom:10px;padding:10px;background:var(--bg2);border:1px solid var(--bd);border-radius:6px;font-size:12px;color:var(--tx3);line-height:1.5">
@@ -383,7 +384,8 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
   </div>
   <div class="subsec" data-subkey="plugin-editor-quick-rule">
     <div class="subsec-head">
-      <div class="subsec-title">Quick Rule</div>
+      <div class="subsec-title">Quick Rule <span class="title-help" onclick="return toggleHelp(this,event)" title="Create one plugin rule quickly from a shorthand CAN line.">?</span></div>
+      <div class="subsec-meta">Fast builder</div>
     </div>
     <div class="subsec-body">
       <div style="padding:10px;background:var(--bg2);border:1px solid var(--bd);border-radius:6px">
@@ -405,7 +407,8 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
   </details>
   <div class="subsec" data-subkey="plugin-editor-rule-test">
     <div class="subsec-head">
-      <div class="subsec-title">Rule Test</div>
+      <div class="subsec-title">Rule Test <span class="title-help" onclick="return toggleHelp(this,event)" title="Waits for a live matching frame, applies one editor rule and injects the result for testing.">?</span></div>
+      <div class="subsec-meta">Single rule preview</div>
     </div>
     <div class="subsec-body">
       <div style="font-size:11px;color:var(--tx3);line-height:1.5;margin-bottom:8px">
@@ -436,13 +439,13 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 
 <div class="card">
   <div class="card-hdr">
-    <div class="card-title">Configuration</div>
+    <div class="card-title">Configuration <span class="title-help" onclick="return toggleHelp(this,event)" title="Device settings for hardware mode, WiFi, CAN pins, logging and backup.">?</span></div>
     <div class="card-meta">Device settings</div>
   </div>
 
   <div class="subsec" data-subkey="config-hardware">
     <div class="subsec-head">
-      <div class="subsec-title">Hardware</div>
+      <div class="subsec-title">Hardware <span class="title-help" onclick="return toggleHelp(this,event)" title="Select the autopilot hardware generation and matching speed profile set.">?</span></div>
       <div class="subsec-meta">Autopilot generation</div>
     </div>
     <div class="subsec-body">
@@ -476,7 +479,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 
   <div class="subsec" data-subkey="config-wifi-hotspot">
     <div class="subsec-head">
-      <div class="subsec-title">WiFi Hotspot <span onclick="toggleInfo('ap-info')" style="color:var(--tx3);cursor:pointer;font-size:12px;margin-left:4px" title="About WiFi storage">&#9432;</span></div>
+      <div class="subsec-title">WiFi Hotspot <span class="title-help" onclick="return toggleHelp(this,event)" data-help-target="ap-info" title="Configure the device hotspot name, password and visibility. Saved in NVS.">?</span></div>
       <div class="subsec-meta"><span id="ap-stored" style="margin-right:8px"></span><span id="ap-clients">0 clients</span></div>
     </div>
     <div class="subsec-body">
@@ -505,7 +508,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 
   <div class="subsec" data-subkey="config-wifi-internet">
     <div class="subsec-head">
-      <div class="subsec-title">WiFi Internet <span id="wifi-stored" style="font-size:11px;font-weight:normal;color:var(--tx3)"></span></div>
+      <div class="subsec-title">WiFi Internet <span class="title-help" onclick="return toggleHelp(this,event)" title="Connect the device to an upstream WiFi network for updates and downloads. Saved in NVS.">?</span></div>
       <div class="subsec-meta" id="wifi-status">Not configured</div>
     </div>
     <div class="subsec-body">
@@ -520,7 +523,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
         <button class="sniff-btn" onclick="saveWifi()">Connect</button>
       </div>
       <details style="margin-top:4px">
-        <summary style="font-size:11px;color:var(--acc);cursor:pointer;user-select:none">Static IP (optional)</summary>
+        <summary style="font-size:11px;color:var(--acc);cursor:pointer;user-select:none">Static IP (optional) <span class="title-help" onclick="return toggleHelp(this,event)" title="Set a fixed IP configuration instead of using DHCP.">?</span></summary>
         <div style="margin-top:6px">
           <label style="font-size:11px;color:var(--tx3);display:flex;align-items:center;gap:6px;margin-bottom:6px">
             <input type="checkbox" id="wifi-static" onchange="toggleStaticIP()"> Use static IP
@@ -540,7 +543,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 
   <div class="subsec" data-subkey="config-can-pins">
     <div class="subsec-head">
-      <div class="subsec-title">CAN Pins <span onclick="toggleInfo('can-pins-info')" style="color:var(--tx3);cursor:pointer;font-size:12px;margin-left:4px" title="About CAN pins">&#9432;</span></div>
+      <div class="subsec-title">CAN Pins <span class="title-help" onclick="return toggleHelp(this,event)" data-help-target="can-pins-info" title="Set the ESP32 GPIO pins used for the CAN transceiver. Wrong values can disable CAN.">?</span></div>
       <div class="subsec-meta" id="can-pins-status">default</div>
     </div>
     <div class="subsec-body">
@@ -558,7 +561,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 
   <div class="setting-row" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bd)">
     <div class="setting-info">
-      <div class="setting-name">Enable Logging</div>
+      <div class="setting-name">Enable Logging <span class="title-help" onclick="return toggleHelp(this,event)" title="Turns serial and dashboard logging on or off.">?</span></div>
       <div class="setting-desc">Toggle serial and dashboard log output</div>
     </div>
     <label class="tgl"><input type="checkbox" id="tgl-eprn" checked onchange="pushLogging()">
@@ -566,7 +569,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
   </div>
   <div class="setting-row">
     <div class="setting-info">
-      <div class="setting-name">Settings Backup</div>
+      <div class="setting-name">Settings Backup <span class="title-help" onclick="return toggleHelp(this,event)" data-help-target="backup-info" title="Export or restore saved device settings as JSON.">?</span></div>
       <div class="setting-desc">Export and import device settings</div>
     </div>
     <button class="sniff-btn" onclick="exportSettings()">Download</button>
@@ -580,20 +583,20 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 
 <div class="card">
   <div class="card-hdr">
-    <div class="card-title">Firmware Update</div>
-    <div class="card-meta" id="fw-ver"></div>
+    <div class="card-title">Firmware Update <span class="title-help" onclick="return toggleHelp(this,event)" title="Check for updates, enable beta builds and upload firmware manually.">?</span></div>
+    <div class="card-meta" id="fw-ver">Version info</div>
   </div>
   <div style="margin-bottom:10px">
     <div class="setting-row">
       <div class="setting-info">
-        <div class="setting-name">Beta Channel</div>
+        <div class="setting-name">Beta Channel <span class="title-help" onclick="return toggleHelp(this,event)" title="Shows pre-release firmware versions when available.">?</span></div>
         <div class="setting-desc">Include pre-release / beta firmware versions</div>
       </div>
       <label class="tgl"><input type="checkbox" id="beta-tgl" onchange="toggleBeta()"><div class="tgl-track"><div class="tgl-thumb"></div></div></label>
     </div>
     <div class="setting-row">
       <div class="setting-info">
-        <div class="setting-name">Auto-Update on Boot</div>
+        <div class="setting-name">Auto-Update on Boot <span class="title-help" onclick="return toggleHelp(this,event)" title="Checks for firmware updates automatically shortly after WiFi connects.">?</span></div>
         <div class="setting-desc">Check and install updates automatically ~15 s after WiFi connects</div>
       </div>
       <label class="tgl"><input type="checkbox" id="auto-upd-tgl" onchange="toggleAutoUpdate()"><div class="tgl-track"><div class="tgl-thumb"></div></div></label>
@@ -614,7 +617,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
   </div>
 
   <details style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bd)">
-    <summary style="font-size:12px;color:var(--acc);cursor:pointer;user-select:none">Manual firmware upload (.bin)</summary>
+    <summary style="font-size:12px;color:var(--acc);cursor:pointer;user-select:none">Manual firmware upload (.bin) <span class="title-help" onclick="return toggleHelp(this,event)" title="Upload a local firmware .bin file directly to the device.">?</span></summary>
     <div style="margin-top:10px">
       <div class="ota-drop" id="ota-drop" onclick="$('ota-file').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event)">
         <input type="file" id="ota-file" accept=".bin" onchange="fileSelected(this.files[0])">
@@ -635,7 +638,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
   </details>
 </div>
 <div class="card">
-  <div class="card-hdr"><div class="card-title">Live Log</div></div>
+  <div class="card-hdr"><div class="card-title">Live Log <span class="title-help" onclick="return toggleHelp(this,event)" title="Shows recent device log lines from the dashboard and firmware.">?</span></div><div class="card-meta">Recent device output</div></div>
   <div class="log-box" id="log">Waiting...</div>
 </div>
 
@@ -1483,6 +1486,37 @@ function toggleDetails(idx){
 function toggleInfo(id){
   var el=$(id);
   if(el)el.style.display=el.style.display==='none'?'block':'none';
+}
+
+function toggleHelp(btn,ev){
+  if(ev){
+    ev.preventDefault();
+    ev.stopPropagation();
+  }
+  var targetId=btn.getAttribute('data-help-target');
+  if(targetId){
+    toggleInfo(targetId);
+    return false;
+  }
+  var text=btn.getAttribute('data-help')||btn.getAttribute('title')||'More information is not available yet.';
+  var panelId=btn.getAttribute('data-inline-help-id');
+  var panel=panelId?document.getElementById(panelId):null;
+  if(!panel){
+    panel=document.createElement('div');
+    panel.className='inline-help-panel';
+    panel.textContent=text;
+    panelId='inline-help-'+Math.random().toString(36).slice(2,10);
+    panel.id=panelId;
+    btn.setAttribute('data-inline-help-id',panelId);
+    var anchor=btn.closest('.subsec-head, .card-hdr, .setting-name, summary');
+    if(anchor&&anchor.parentNode){
+      anchor.insertAdjacentElement('afterend',panel);
+    }else if(btn.parentNode){
+      btn.parentNode.insertAdjacentElement('afterend',panel);
+    }
+  }
+  panel.style.display=panel.style.display==='block'?'none':'block';
+  return false;
 }
 
 function pluginStateSignature(list){
