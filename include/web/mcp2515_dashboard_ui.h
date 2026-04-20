@@ -68,12 +68,20 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 /* Cards */
 .card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin:0 16px 12px;overflow:hidden}
 .card-hdr{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;column-gap:8px;margin-bottom:14px}
-.card-title{font-size:13px;font-weight:600;color:var(--tx);text-transform:uppercase;letter-spacing:.5px}
-.card-meta{font-size:11px;color:var(--tx3)}
-.card-min-btn{padding:4px 8px;font-size:10px}
+.card-title{font-size:13px;font-weight:600;color:var(--tx);text-transform:uppercase;letter-spacing:.5px;min-width:0}
+.card-meta{font-size:11px;color:var(--tx3);justify-self:end;text-align:right;min-width:0}
+.card-min-btn{padding:4px 8px;font-size:10px;justify-self:end}
 .card.collapsed{padding-bottom:12px}
 .card.collapsed .card-hdr{margin-bottom:0}
 .card.collapsed>:not(.card-hdr){display:none !important}
+.subsec{margin-top:14px;padding-top:12px;border-top:1px solid var(--bd)}
+.subsec:first-child{margin-top:0;padding-top:0;border-top:none}
+.subsec-head{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;column-gap:8px;margin-bottom:8px}
+.subsec-title{font-size:13px;font-weight:600;color:var(--tx);min-width:0}
+.subsec-meta{font-size:11px;color:var(--tx3);justify-self:end;text-align:right;min-width:0}
+.subsec-btn{padding:4px 8px;font-size:10px;justify-self:end}
+.subsec.collapsed .subsec-head{margin-bottom:0}
+.subsec.collapsed .subsec-body{display:none}
 
 /* HW seg */
 .hw-seg{display:flex;background:var(--card2);border:1px solid var(--bd);border-radius:9px;padding:3px;gap:2px}
@@ -82,6 +90,10 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 .hw-btn.active{background:var(--card);color:var(--acc);border:1px solid var(--accBd);
   box-shadow:0 1px 4px rgba(0,0,0,.15)}
 .hw-btn:hover:not(.active){background:var(--bd);color:var(--tx)}
+.profile-wrap{margin-top:12px}
+.profile-label{font-size:11px;color:var(--tx3);margin-bottom:6px}
+.profile-group.hidden{display:none}
+.profile-note{font-size:10px;color:var(--tx3);margin-top:6px}
 
 /* Speed pills */
 .pills{display:flex;gap:6px;flex-wrap:wrap}
@@ -245,152 +257,83 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 <div style="height:12px"></div>
 
 <div class="card">
-  <div class="card-hdr"><div class="card-title">Hardware</div><div class="card-meta">Autopilot generation</div></div>
-  <div class="hw-seg" id="hw-seg">
-    <button class="hw-btn" data-v="0" onclick="setHW(0)">Legacy</button>
-    <button class="hw-btn active" data-v="1" onclick="setHW(1)">HW3</button>
-    <button class="hw-btn" data-v="2" onclick="setHW(2)">HW4</button>
-  </div>
-</div>
+  <div class="card-hdr"><div class="card-title">CAN</div><div class="card-meta">Sniffer, recorder and bus status</div></div>
 
-<div class="card">
-  <div class="card-hdr"><div class="card-title">Controls</div></div>
-
-  <div class="setting-row">
-    <div class="setting-info">
-      <div class="setting-name">Enable Logging</div>
-      <div class="setting-desc">Toggle serial and dashboard log output</div>
+  <div class="subsec" data-subkey="can-sniffer">
+    <div class="subsec-head">
+      <div class="subsec-title">CAN Sniffer</div>
+      <div class="subsec-meta" id="sniff-count">0 frames</div>
     </div>
-    <label class="tgl"><input type="checkbox" id="tgl-eprn" checked onchange="pushLogging()">
-      <div class="tgl-track"><div class="tgl-thumb"></div></div></label>
-  </div>
-
-</div>
-
-<div class="card">
-  <div class="card-hdr">
-    <div class="card-title">CAN Sniffer</div>
-    <div class="card-meta" id="sniff-count">0 frames</div>
-  </div>
-  <div class="sniff-ctrl">
-    <input class="sniff-input" id="sniff-filter" placeholder="Filter by ID or name" oninput="renderSniffer()">
-    <button class="sniff-btn" id="sniff-id-btn" onclick="toggleSniffIdMode()">Wire IDs</button>
-    <button class="sniff-btn" id="sniff-pause-btn" onclick="togglePause()">Pause</button>
-  </div>
-  <div class="sniff-box" id="sniffer">
-    <div style="padding:20px;color:var(--tx3);text-align:center;font-size:12px">Waiting for CAN frames</div>
-  </div>
-</div>
-
-<div class="card">
-  <div class="card-hdr"><div class="card-title">CAN Recorder</div><div class="card-meta" id="rec-meta">Idle</div></div>
-  <div class="rec-bar"><div class="rec-fill" id="rec-fill"></div></div>
-  <div class="rec-info">
-    <span id="rec-count">0 / 2000 frames</span>
-    <span id="rec-status">Ready</span>
-  </div>
-  <div class="btn-row">
-    <button class="btn" id="rec-btn" onclick="toggleRec()">Start Recording</button>
-    <a class="btn" id="rec-dl" href="/rec_download" download="can_recording.csv" style="display:none;text-align:center;text-decoration:none;padding:10px;border:1px solid var(--bd2);color:var(--tx2)">Download CSV</a>
-  </div>
-</div>
-
-<div class="card">
-  <div class="card-hdr">
-    <div class="card-title">CAN Controller</div>
-    <div style="display:flex;align-items:center;gap:8px">
-      <div class="card-meta" id="s-mcp-raw">MCP2515</div>
-      <button onclick="resetStats()" style="font-size:10px;padding:2px 8px;border:1px solid var(--bd2);border-radius:5px;background:transparent;color:var(--tx3);cursor:pointer;font-family:inherit">Reset</button>
-    </div>
-  </div>
-  <div class="eflg-row" id="eflg-row"><span class="eflg-pill eflg-ok">OK</span></div>
-  <table class="mux-tbl">
-    <tr><th>Mux</th><th>RX</th><th>TX</th><th>Errors</th></tr>
-    <tr><td>0</td><td id="m0rx">0</td><td id="m0tx">0</td><td id="m0err">0</td></tr>
-    <tr><td>1</td><td id="m1rx">0</td><td id="m1tx">0</td><td id="m1err">0</td></tr>
-    <tr><td>2</td><td id="m2rx">0</td><td id="m2tx">0</td><td id="m2err">0</td></tr>
-  </table>
-</div>
-
-<div class="card">
-  <div class="card-hdr">
-    <div class="card-title">Last Write Check</div>
-    <div class="card-meta">Best effort</div>
-  </div>
-  <div class="probe-status v-dim" id="probe-status">No injected frame yet</div>
-  <div class="probe-note">Shows the last injected frame and the latest bus frame with the same ID and mux. Useful for spotting overwrite; a match is not proof that a module accepted the change.</div>
-  <div class="probe-block">
-    <div class="probe-label">Sent</div>
-    <div class="probe-meta" id="probe-tx-meta">—</div>
-    <div class="probe-hex" id="probe-tx">—</div>
-  </div>
-  <div class="probe-block">
-    <div class="probe-label">Bus</div>
-    <div class="probe-meta" id="probe-rx-meta">—</div>
-    <div class="probe-hex" id="probe-rx">—</div>
-  </div>
-</div>
-
-<div class="card">
-  <div class="card-hdr">
-    <div class="card-title">WiFi Hotspot <span onclick="toggleInfo('ap-info')" style="color:var(--tx3);cursor:pointer;font-size:12px;margin-left:4px" title="About WiFi storage">&#9432;</span></div>
-    <div class="card-meta"><span id="ap-stored" style="margin-right:8px"></span><span id="ap-clients">0 clients</span></div>
-  </div>
-  <div id="ap-info" style="display:none;margin-bottom:10px;padding:10px;background:var(--bg2);border:1px solid var(--bd);border-radius:6px;font-size:12px;color:var(--tx3);line-height:1.5">
-    Stored in NVS (non-volatile storage). The SSID and password survive firmware updates and reboots. Only a full factory erase via USB clears them.
-  </div>
-  <div class="setting-desc" style="margin-bottom:8px">Change the WiFi hotspot name and password</div>
-  <div style="display:flex;gap:6px;margin-bottom:6px">
-    <input class="sniff-input" id="ap-ssid" placeholder="Hotspot Name" style="flex:1">
-    <input class="sniff-input" id="ap-pass" placeholder="New Password (min 8)" type="password" style="flex:1">
-  </div>
-  <div class="setting-row" style="padding:8px 0">
-    <div class="setting-info">
-      <div class="setting-name">Hide SSID</div>
-      <div class="setting-desc">Don't broadcast the hotspot name &mdash; clients must enter it manually</div>
-    </div>
-    <label class="tgl"><input type="checkbox" id="ap-hidden"><div class="tgl-track"><div class="tgl-thumb"></div></div></label>
-  </div>
-  <div style="display:flex;gap:6px;align-items:center">
-    <button class="sniff-btn" onclick="saveAP()">Save</button>
-    <span style="font-size:11px;color:var(--tx3)" id="ap-status"></span>
-  </div>
-  <div style="font-size:10px;color:var(--tx3);margin-top:6px">Changes take effect after reboot. Leave password empty to keep current.</div>
-</div>
-
-<div class="card">
-  <div class="card-hdr">
-    <div class="card-title">WiFi Internet <span id="wifi-stored" style="font-size:11px;font-weight:normal;color:var(--tx3)"></span></div>
-    <div class="card-meta" id="wifi-status">Not configured</div>
-  </div>
-  <div class="setting-desc" style="margin-bottom:8px">Connect to your home WiFi. Required for firmware updates and plugin downloads. Stored in NVS &mdash; survives firmware updates.</div>
-  <div style="display:flex;gap:6px;margin-bottom:6px">
-    <input class="sniff-input" id="wifi-ssid" placeholder="WiFi SSID" style="flex:1">
-    <button class="sniff-btn" onclick="scanWifi()" id="scan-btn">Scan</button>
-  </div>
-  <div id="wifi-nets" style="display:none;margin-bottom:6px;max-height:140px;overflow-y:auto;border:1px solid var(--bd);border-radius:6px;background:var(--bg2)"></div>
-  <div style="display:flex;gap:6px;margin-bottom:6px">
-    <input class="sniff-input" id="wifi-pass" placeholder="Password" type="password" style="flex:1">
-    <button class="sniff-btn" onclick="saveWifi()">Connect</button>
-  </div>
-  <details style="margin-top:4px">
-    <summary style="font-size:11px;color:var(--acc);cursor:pointer;user-select:none">Static IP (optional)</summary>
-    <div style="margin-top:6px">
-      <label style="font-size:11px;color:var(--tx3);display:flex;align-items:center;gap:6px;margin-bottom:6px">
-        <input type="checkbox" id="wifi-static" onchange="toggleStaticIP()"> Use static IP
-      </label>
-      <div id="static-fields" style="display:none">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
-          <input class="sniff-input" id="wifi-ip" placeholder="IP (e.g. 192.168.1.100)">
-          <input class="sniff-input" id="wifi-gw" placeholder="Gateway (e.g. 192.168.1.1)">
-          <input class="sniff-input" id="wifi-mask" placeholder="Mask (255.255.255.0)" value="255.255.255.0">
-          <input class="sniff-input" id="wifi-dns" placeholder="DNS (e.g. 8.8.8.8)">
-        </div>
+    <div class="subsec-body">
+      <div class="sniff-ctrl">
+        <input class="sniff-input" id="sniff-filter" placeholder="Filter by ID or name" oninput="renderSniffer()">
+        <button class="sniff-btn" id="sniff-id-btn" onclick="toggleSniffIdMode()">Wire IDs</button>
+        <button class="sniff-btn" id="sniff-pause-btn" onclick="togglePause()">Pause</button>
+      </div>
+      <div class="sniff-box" id="sniffer">
+        <div style="padding:20px;color:var(--tx3);text-align:center;font-size:12px">Waiting for CAN frames</div>
       </div>
     </div>
-  </details>
-</div>
+  </div>
 
+  <div class="subsec" data-subkey="can-recorder">
+    <div class="subsec-head">
+      <div class="subsec-title">CAN Recorder</div>
+      <div class="subsec-meta" id="rec-meta">Idle</div>
+    </div>
+    <div class="subsec-body">
+      <div class="rec-bar"><div class="rec-fill" id="rec-fill"></div></div>
+      <div class="rec-info">
+        <span id="rec-count">0 / 2000 frames</span>
+        <span id="rec-status">Ready</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="rec-btn" onclick="toggleRec()">Start Recording</button>
+        <a class="btn" id="rec-dl" href="/rec_download" download="can_recording.csv" style="display:none;text-align:center;text-decoration:none;padding:10px;border:1px solid var(--bd2);color:var(--tx2)">Download CSV</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsec" data-subkey="can-controller">
+    <div class="subsec-head">
+      <div class="subsec-title">CAN Controller</div>
+      <div class="subsec-meta" style="display:flex;align-items:center;gap:8px">
+        <span id="s-mcp-raw">MCP2515</span>
+        <button onclick="resetStats()" style="font-size:10px;padding:2px 8px;border:1px solid var(--bd2);border-radius:5px;background:transparent;color:var(--tx3);cursor:pointer;font-family:inherit">Reset</button>
+      </div>
+    </div>
+    <div class="subsec-body">
+      <div class="eflg-row" id="eflg-row"><span class="eflg-pill eflg-ok">OK</span></div>
+      <table class="mux-tbl">
+        <tr><th>Mux</th><th>RX</th><th>TX</th><th>Errors</th></tr>
+        <tr><td>0</td><td id="m0rx">0</td><td id="m0tx">0</td><td id="m0err">0</td></tr>
+        <tr><td>1</td><td id="m1rx">0</td><td id="m1tx">0</td><td id="m1err">0</td></tr>
+        <tr><td>2</td><td id="m2rx">0</td><td id="m2tx">0</td><td id="m2err">0</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="subsec" data-subkey="can-last-write-check">
+    <div class="subsec-head">
+      <div class="subsec-title">Last Write Check</div>
+      <div class="subsec-meta">Best effort</div>
+    </div>
+    <div class="subsec-body">
+      <div class="probe-status v-dim" id="probe-status">No injected frame yet</div>
+      <div class="probe-note">Shows the last injected frame and the latest bus frame with the same ID and mux. Useful for spotting overwrite; a match is not proof that a module accepted the change.</div>
+      <div class="probe-block">
+        <div class="probe-label">Sent</div>
+        <div class="probe-meta" id="probe-tx-meta">—</div>
+        <div class="probe-hex" id="probe-tx">—</div>
+      </div>
+      <div class="probe-block">
+        <div class="probe-label">Bus</div>
+        <div class="probe-meta" id="probe-rx-meta">—</div>
+        <div class="probe-hex" id="probe-rx">—</div>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="card">
   <div class="card-hdr">
     <div class="card-title">Plugins <span onclick="toggleInfo('plg-info')" style="color:var(--tx3);cursor:pointer;font-size:12px;margin-left:4px" title="What are plugins?">&#9432;</span></div>
@@ -439,14 +382,20 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
     <input class="sniff-input" id="pe-author" placeholder="Author (optional)" oninput="peRenderPreview()">
     <input class="sniff-input" id="pe-version" placeholder="Version" value="1.0" oninput="peRenderPreview()">
   </div>
-  <div style="margin-bottom:10px;padding:10px;background:var(--bg2);border:1px solid var(--bd);border-radius:6px">
-    <div class="feat-name" style="margin-bottom:4px">Quick Rule</div>
-    <div style="font-size:11px;color:var(--tx3);line-height:1.5;margin-bottom:8px">
-      Paste a shorthand line like <span style="font-family:monospace">0x7FF mux=2 byte[5] = 0x4C</span> to create one rule directly.
+  <div class="subsec" data-subkey="plugin-editor-quick-rule">
+    <div class="subsec-head">
+      <div class="subsec-title">Quick Rule</div>
     </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <input class="sniff-input" id="pe-shortcut" placeholder="0x7FF mux=2 byte[5] = 0x4C (bit 2 flipped -> tier 3 SELF_DRIVING)" onkeydown="if(event.key==='Enter'){event.preventDefault();peAddRuleFromShortcut()}" style="flex:1">
-      <button class="sniff-btn" onclick="peAddRuleFromShortcut()">Add Shortcut</button>
+    <div class="subsec-body">
+      <div style="padding:10px;background:var(--bg2);border:1px solid var(--bd);border-radius:6px">
+        <div style="font-size:11px;color:var(--tx3);line-height:1.5;margin-bottom:8px">
+          Paste a shorthand line like <span style="font-family:monospace">0x7FF mux=2 byte[5] = 0x4C</span> to create one rule directly.
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <input class="sniff-input" id="pe-shortcut" placeholder="0x7FF mux=2 byte[5] = 0x4C (bit 2 flipped -> tier 3 SELF_DRIVING)" onkeydown="if(event.key==='Enter'){event.preventDefault();peAddRuleFromShortcut()}" style="flex:1">
+          <button class="sniff-btn" onclick="peAddRuleFromShortcut()">Add Shortcut</button>
+        </div>
+      </div>
     </div>
   </div>
   <div id="pe-rules"></div>
@@ -455,21 +404,25 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
     <summary style="font-size:11px;color:var(--acc);cursor:pointer;user-select:none">JSON Preview</summary>
     <pre id="pe-preview" style="max-height:200px;overflow:auto;background:var(--bg2);border:1px solid var(--bd);border-radius:6px;padding:8px;font-size:11px;color:var(--tx2);margin-top:6px;white-space:pre-wrap;word-break:break-all"></pre>
   </details>
-  <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bd)">
-    <div class="setting-name" style="margin-bottom:6px">Rule Test</div>
-    <div style="font-size:11px;color:var(--tx3);line-height:1.5;margin-bottom:8px">
-      Choose one rule from the editor. The dashboard waits for the next matching CAN frame, applies the rule to that live frame, then injects it with your count and interval.
+  <div class="subsec" data-subkey="plugin-editor-rule-test">
+    <div class="subsec-head">
+      <div class="subsec-title">Rule Test</div>
     </div>
-    <div style="display:grid;grid-template-columns:minmax(0,1fr) 90px 110px;gap:6px;margin-bottom:6px">
-      <select class="sniff-input" id="pe-test-rule" onchange="peUpdateTestPreview()"></select>
-      <input class="sniff-input" id="pe-test-count" type="number" min="1" max="200" value="1" onchange="peUpdateTestPreview()">
-      <input class="sniff-input" id="pe-test-interval" type="number" min="10" max="5000" value="100" onchange="peUpdateTestPreview()">
-    </div>
-    <pre id="pe-test-preview" style="min-height:54px;overflow:auto;background:var(--bg2);border:1px solid var(--bd);border-radius:6px;padding:8px;font-size:11px;color:var(--tx2);white-space:pre-wrap;word-break:break-word">Add a rule to preview a test frame.</pre>
-    <div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap">
-      <button class="sniff-btn" onclick="peStartTest()">Start Test</button>
-      <button class="sniff-btn" onclick="peStopTest()">Stop Test</button>
-      <span id="pe-test-status" style="font-size:11px;color:var(--tx3)">Idle</span>
+    <div class="subsec-body">
+      <div style="font-size:11px;color:var(--tx3);line-height:1.5;margin-bottom:8px">
+        Choose one rule from the editor. The dashboard waits for the next matching CAN frame, applies the rule to that live frame, then injects it with your count and interval.
+      </div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) 90px 110px;gap:6px;margin-bottom:6px">
+        <select class="sniff-input" id="pe-test-rule" onchange="peUpdateTestPreview()"></select>
+        <input class="sniff-input" id="pe-test-count" type="number" min="1" max="200" value="1" onchange="peUpdateTestPreview()">
+        <input class="sniff-input" id="pe-test-interval" type="number" min="10" max="5000" value="100" onchange="peUpdateTestPreview()">
+      </div>
+      <pre id="pe-test-preview" style="min-height:54px;overflow:auto;background:var(--bg2);border:1px solid var(--bd);border-radius:6px;padding:8px;font-size:11px;color:var(--tx2);white-space:pre-wrap;word-break:break-word">Add a rule to preview a test frame.</pre>
+      <div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap">
+        <button class="sniff-btn" onclick="peStartTest()">Start Test</button>
+        <button class="sniff-btn" onclick="peStopTest()">Stop Test</button>
+        <span id="pe-test-status" style="font-size:11px;color:var(--tx3)">Idle</span>
+      </div>
     </div>
   </div>
   <div style="display:flex;gap:6px;margin-top:10px">
@@ -478,6 +431,152 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
     <button class="sniff-btn" onclick="peReset()">Reset</button>
   </div>
   <div id="pe-status" style="font-size:11px;margin-top:6px;color:var(--tx3)"></div>
+</div>
+
+
+
+<div class="card">
+  <div class="card-hdr">
+    <div class="card-title">Configuration</div>
+    <div class="card-meta">Device settings</div>
+  </div>
+
+  <div class="subsec" data-subkey="config-hardware">
+    <div class="subsec-head">
+      <div class="subsec-title">Hardware</div>
+      <div class="subsec-meta">Autopilot generation</div>
+    </div>
+    <div class="subsec-body">
+      <div class="hw-seg" id="hw-seg">
+        <button class="hw-btn" data-v="0" onclick="setHW(0)">Legacy</button>
+        <button class="hw-btn active" data-v="1" onclick="setHW(1)">HW3</button>
+        <button class="hw-btn" data-v="2" onclick="setHW(2)">HW4</button>
+      </div>
+      <div class="profile-wrap">
+        <div class="profile-label">Profile</div>
+        <div class="profile-group" id="sp3-group">
+          <div class="hw-seg" id="sp3-seg">
+            <button class="hw-btn" data-v="0" onclick="setProfile(0)">Chill</button>
+            <button class="hw-btn" data-v="1" onclick="setProfile(1)">Normal</button>
+            <button class="hw-btn" data-v="2" onclick="setProfile(2)">Hurry</button>
+          </div>
+        </div>
+        <div class="profile-group hidden" id="sp4-group">
+          <div class="hw-seg" id="sp4-seg">
+            <button class="hw-btn" data-v="0" onclick="setProfile(0)">Chill</button>
+            <button class="hw-btn" data-v="1" onclick="setProfile(1)">Normal</button>
+            <button class="hw-btn" data-v="2" onclick="setProfile(2)">Hurry</button>
+            <button class="hw-btn" data-v="3" onclick="setProfile(3)">Max</button>
+            <button class="hw-btn" data-v="4" onclick="setProfile(4)">Sloth</button>
+          </div>
+        </div>
+        <div class="profile-note" id="profile-note">Available profiles depend on the selected hardware.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsec" data-subkey="config-wifi-hotspot">
+    <div class="subsec-head">
+      <div class="subsec-title">WiFi Hotspot <span onclick="toggleInfo('ap-info')" style="color:var(--tx3);cursor:pointer;font-size:12px;margin-left:4px" title="About WiFi storage">&#9432;</span></div>
+      <div class="subsec-meta"><span id="ap-stored" style="margin-right:8px"></span><span id="ap-clients">0 clients</span></div>
+    </div>
+    <div class="subsec-body">
+      <div id="ap-info" style="display:none;margin-bottom:10px;padding:10px;background:var(--bg2);border:1px solid var(--bd);border-radius:6px;font-size:12px;color:var(--tx3);line-height:1.5">
+        Stored in NVS (non-volatile storage). The SSID and password survive firmware updates and reboots. Only a full factory erase via USB clears them.
+      </div>
+      <div class="setting-desc" style="margin-bottom:8px">Change the WiFi hotspot name and password</div>
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <input class="sniff-input" id="ap-ssid" placeholder="Hotspot Name" style="flex:1">
+        <input class="sniff-input" id="ap-pass" placeholder="New Password (min 8)" type="password" style="flex:1">
+      </div>
+      <div class="setting-row" style="padding:8px 0">
+        <div class="setting-info">
+          <div class="setting-name">Hide SSID</div>
+          <div class="setting-desc">Don't broadcast the hotspot name &mdash; clients must enter it manually</div>
+        </div>
+        <label class="tgl"><input type="checkbox" id="ap-hidden"><div class="tgl-track"><div class="tgl-thumb"></div></div></label>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="sniff-btn" onclick="saveAP()">Save</button>
+        <span style="font-size:11px;color:var(--tx3)" id="ap-status"></span>
+      </div>
+      <div style="font-size:10px;color:var(--tx3);margin-top:6px">Changes take effect after reboot. Leave password empty to keep current.</div>
+    </div>
+  </div>
+
+  <div class="subsec" data-subkey="config-wifi-internet">
+    <div class="subsec-head">
+      <div class="subsec-title">WiFi Internet <span id="wifi-stored" style="font-size:11px;font-weight:normal;color:var(--tx3)"></span></div>
+      <div class="subsec-meta" id="wifi-status">Not configured</div>
+    </div>
+    <div class="subsec-body">
+      <div class="setting-desc" style="margin-bottom:8px">Connect to your home WiFi. Required for firmware updates and plugin downloads. Stored in NVS &mdash; survives firmware updates.</div>
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <input class="sniff-input" id="wifi-ssid" placeholder="WiFi SSID" style="flex:1">
+        <button class="sniff-btn" onclick="scanWifi()" id="scan-btn">Scan</button>
+      </div>
+      <div id="wifi-nets" style="display:none;margin-bottom:6px;max-height:140px;overflow-y:auto;border:1px solid var(--bd);border-radius:6px;background:var(--bg2)"></div>
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <input class="sniff-input" id="wifi-pass" placeholder="Password" type="password" style="flex:1">
+        <button class="sniff-btn" onclick="saveWifi()">Connect</button>
+      </div>
+      <details style="margin-top:4px">
+        <summary style="font-size:11px;color:var(--acc);cursor:pointer;user-select:none">Static IP (optional)</summary>
+        <div style="margin-top:6px">
+          <label style="font-size:11px;color:var(--tx3);display:flex;align-items:center;gap:6px;margin-bottom:6px">
+            <input type="checkbox" id="wifi-static" onchange="toggleStaticIP()"> Use static IP
+          </label>
+          <div id="static-fields" style="display:none">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+              <input class="sniff-input" id="wifi-ip" placeholder="IP (e.g. 192.168.1.100)">
+              <input class="sniff-input" id="wifi-gw" placeholder="Gateway (e.g. 192.168.1.1)">
+              <input class="sniff-input" id="wifi-mask" placeholder="Mask (255.255.255.0)" value="255.255.255.0">
+              <input class="sniff-input" id="wifi-dns" placeholder="DNS (e.g. 8.8.8.8)">
+            </div>
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <div class="subsec" data-subkey="config-can-pins">
+    <div class="subsec-head">
+      <div class="subsec-title">CAN Pins <span onclick="toggleInfo('can-pins-info')" style="color:var(--tx3);cursor:pointer;font-size:12px;margin-left:4px" title="About CAN pins">&#9432;</span></div>
+      <div class="subsec-meta" id="can-pins-status">default</div>
+    </div>
+    <div class="subsec-body">
+      <div id="can-pins-info" style="display:none;margin-bottom:10px;padding:10px;background:var(--bg2);border:1px solid var(--bd);border-radius:6px;font-size:12px;color:var(--tx3);line-height:1.5">
+        GPIO pins for the CAN transceiver (TWAI). Persisted in NVS so they survive OTA updates. Leave empty to use the firmware&#39;s compile-time defaults. <b>Wrong pins disable CAN</b> &mdash; recovery needs a USB re-flash. On most ESP32 boards GPIO 6&ndash;11 remain reserved for SPI flash.
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input class="sniff-input" id="can-tx" type="number" min="0" max="39" placeholder="TX GPIO" style="flex:1">
+        <input class="sniff-input" id="can-rx" type="number" min="0" max="39" placeholder="RX GPIO" style="flex:1">
+        <button class="sniff-btn" onclick="saveCanPins()">Save</button>
+      </div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:6px" id="can-pins-hint">Reboot required after change</div>
+    </div>
+  </div>
+
+  <div class="setting-row" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bd)">
+    <div class="setting-info">
+      <div class="setting-name">Enable Logging</div>
+      <div class="setting-desc">Toggle serial and dashboard log output</div>
+    </div>
+    <label class="tgl"><input type="checkbox" id="tgl-eprn" checked onchange="pushLogging()">
+      <div class="tgl-track"><div class="tgl-thumb"></div></div></label>
+  </div>
+  <div class="setting-row">
+    <div class="setting-info">
+      <div class="setting-name">Settings Backup</div>
+      <div class="setting-desc">Export and import device settings</div>
+    </div>
+    <button class="sniff-btn" onclick="exportSettings()">Download</button>
+    <button class="sniff-btn" onclick="document.getElementById('backup-file').click()">Upload &amp; Restore</button>
+    <input type="file" id="backup-file" accept=".json,application/json" style="display:none" onchange="importSettings(event)">
+  </div>
+  <div id="backup-info" style="display:none;margin-bottom:10px;padding:10px;background:var(--bg2);border:1px solid var(--bd);border-radius:6px;font-size:12px;color:var(--tx3);line-height:1.5">
+    Exports AP credentials, WiFi Internet, CAN pins and beta channel as JSON. Useful before a full re-flash or when migrating to another device. <b>Passwords are included in clear text</b> &mdash; keep the file safe.
+  </div>
 </div>
 
 <div class="card">
@@ -536,38 +635,6 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
     </div>
   </details>
 </div>
-
-<div class="card">
-  <div class="card-hdr">
-    <div class="card-title">CAN Pins <span onclick="toggleInfo('can-pins-info')" style="color:var(--tx3);cursor:pointer;font-size:12px;margin-left:4px" title="About CAN pins">&#9432;</span></div>
-    <div class="card-meta" id="can-pins-status">default</div>
-  </div>
-  <div id="can-pins-info" style="display:none;margin-bottom:10px;padding:10px;background:var(--bg2);border:1px solid var(--bd);border-radius:6px;font-size:12px;color:var(--tx3);line-height:1.5">
-    GPIO pins for the CAN transceiver (TWAI). Persisted in NVS so they survive OTA updates. Leave empty to use the firmware&#39;s compile-time defaults. <b>Wrong pins disable CAN</b> &mdash; recovery needs a USB re-flash. On most ESP32 boards GPIO 6&ndash;11 remain reserved for SPI flash.
-  </div>
-  <div style="display:flex;gap:6px;align-items:center">
-    <input class="sniff-input" id="can-tx" type="number" min="0" max="39" placeholder="TX GPIO" style="flex:1">
-    <input class="sniff-input" id="can-rx" type="number" min="0" max="39" placeholder="RX GPIO" style="flex:1">
-    <button class="sniff-btn" onclick="saveCanPins()">Save</button>
-  </div>
-  <div style="font-size:11px;color:var(--tx3);margin-top:6px" id="can-pins-hint">Reboot required after change</div>
-</div>
-
-<div class="card">
-  <div class="card-hdr">
-    <div class="card-title">Settings Backup <span onclick="toggleInfo('backup-info')" style="color:var(--tx3);cursor:pointer;font-size:12px;margin-left:4px" title="About backup">&#9432;</span></div>
-    <div class="card-meta" id="backup-status"></div>
-  </div>
-  <div id="backup-info" style="display:none;margin-bottom:10px;padding:10px;background:var(--bg2);border:1px solid var(--bd);border-radius:6px;font-size:12px;color:var(--tx3);line-height:1.5">
-    Exports AP credentials, WiFi Internet, CAN pins and beta channel as JSON. Useful before a full re-flash or when migrating to another device. <b>Passwords are included in clear text</b> &mdash; keep the file safe.
-  </div>
-  <div style="display:flex;gap:6px">
-    <button class="sniff-btn" onclick="exportSettings()">Download</button>
-    <button class="sniff-btn" onclick="document.getElementById('backup-file').click()">Upload &amp; Restore</button>
-    <input type="file" id="backup-file" accept=".json,application/json" style="display:none" onchange="importSettings(event)">
-  </div>
-</div>
-
 <div class="card">
   <div class="card-hdr"><div class="card-title">Live Log</div></div>
   <div class="log-box" id="log">Waiting...</div>
@@ -601,7 +668,7 @@ const $=id=>document.getElementById(id);
 const setText=(id,value)=>{const el=$(id);if(el)el.textContent=value;};
 const setClass=(id,value)=>{const el=$(id);if(el)el.className=value;};
 function profileNamesForHw(hw){return hw===2?SP4:SP3;}
-let state={hw:1,can:true};
+let state={hw:1,can:true,sp:0};
 let sniffPaused=false,sniffFrames=[];
 let sniffShowDbcIds=localStorage.getItem('sniffIdMode')==='dbc';
 let otaFile=null;
@@ -689,6 +756,29 @@ function initCardMinimizers(){
     btn.textContent=collapsed?'Show':'Hide';
   });
 }
+function initSubsectionMinimizers(){
+  document.querySelectorAll('.subsec').forEach((sec,i)=>{
+    const hdr=sec.querySelector('.subsec-head');if(!hdr||hdr.querySelector('.subsec-btn'))return;
+    const explicitKey=sec.dataset.subkey||'';
+    const title=sec.querySelector('.subsec-title');
+    const safe=((title?title.textContent:'section').trim().toLowerCase().replace(/[^a-z0-9]+/g,'-'));
+    const key='subCollapse:'+(explicitKey||i+':'+safe);
+    sec.dataset.collapseKey=key;
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='sniff-btn subsec-btn';
+    btn.onclick=()=>{
+      const collapsed=!sec.classList.contains('collapsed');
+      sec.classList.toggle('collapsed',collapsed);
+      localStorage.setItem(key,collapsed?'1':'0');
+      btn.textContent=collapsed?'Show':'Hide';
+    };
+    hdr.appendChild(btn);
+    const collapsed=localStorage.getItem(key)==='1';
+    sec.classList.toggle('collapsed',collapsed);
+    btn.textContent=collapsed?'Show':'Hide';
+  });
+}
 
 function syncSniffPauseButton(){
   const b=$('sniff-pause-btn');if(!b)return;
@@ -770,11 +860,38 @@ function updateHW4(hw){
   document.querySelectorAll('.hw4-only').forEach(el=>el.classList.toggle('hidden',hw!==2));
 }
 
+function clampProfileForHw(hw,sp){
+  if(hw===2)return Math.max(0,Math.min(4,Number(sp)||0));
+  if(hw===1)return Math.max(0,Math.min(2,Number(sp)||0));
+  return 0;
+}
+
+function updateProfileControls(hw,sp){
+  const sp3=$('sp3-group'),sp4=$('sp4-group'),note=$('profile-note');
+  const safeSp=clampProfileForHw(hw,sp);
+  if(sp3)sp3.classList.toggle('hidden',hw!==1);
+  if(sp4)sp4.classList.toggle('hidden',hw!==2);
+  const sp3Seg=$('sp3-seg'),sp4Seg=$('sp4-seg');
+  if(sp3Seg)updSeg(sp3Seg,safeSp,'hw-btn');
+  if(sp4Seg)updSeg(sp4Seg,safeSp,'hw-btn');
+  if(note){
+    if(hw===1)note.textContent='SP3 profiles are available on HW3.';
+    else if(hw===2)note.textContent='SP4 profiles are available on HW4.';
+    else note.textContent='Profiles are only available on HW3 and HW4.';
+  }
+}
+
 function updSeg(el,v,cls){
   el.querySelectorAll('.'+cls).forEach(b=>b.classList.toggle('active',parseInt(b.dataset.v)===v));
 }
 
-function setHW(v){state.hw=v;updSeg($('hw-seg'),v,'hw-btn');updateHW4(v);updateSniffIdToggle();renderSniffer();pushCfg();}
+function setHW(v){state.hw=v;state.sp=clampProfileForHw(v,state.sp);updSeg($('hw-seg'),v,'hw-btn');updateHW4(v);updateProfileControls(v,state.sp);updateSniffIdToggle();renderSniffer();pushCfg();}
+
+function setProfile(v){
+  state.sp=clampProfileForHw(state.hw,v);
+  updateProfileControls(state.hw,state.sp);
+  pushCfg();
+}
 
 function updateInjectButtons(active){
   const stop=$('btn-stop'),resume=$('btn-resume');
@@ -801,7 +918,7 @@ function toggleSniffIdMode(){
 }
 
 async function pushCfg(){
-  const body='hw='+state.hw+'&can='+(state.can?'1':'0');
+  const body='hw='+state.hw+'&sp='+state.sp+'&can='+(state.can?'1':'0');
   try{await fetch('/config',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});}catch(e){}
 }
 
@@ -813,7 +930,7 @@ async function pushLogging(){
 }
 
 async function emergencyStop(){if(!await dashConfirm('Stop injecting? This remains disabled after reboot until you press Resume Injection.','Stop injection','Stop'))return;try{await fetch('/disable',{method:'POST'});}catch(e){}poll();}
-async function resumeInj(){try{await fetch('/config',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'hw='+state.hw+'&can=1'});}catch(e){}poll();}
+async function resumeInj(){try{await fetch('/config',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'hw='+state.hw+'&sp='+state.sp+'&can=1'});}catch(e){}poll();}
 async function reboot(){if(!await dashConfirm('Reboot device?','Reboot','Reboot'))return;try{await fetch('/reboot',{method:'POST'});}catch(e){}}
 
 function fmtUp(s){
@@ -983,7 +1100,7 @@ async function poll(){
     try{
       const d=await fetchPollJson('/status',5000,true);
     const on=!!d.can,injecting=!!d.ci,fpsVal=Number(d.fps||0);
-    state.hw=d.hw;state.can=injecting;
+    state.hw=d.hw;state.sp=clampProfileForHw(d.hw,d.sp);state.can=injecting;
     setClass('dot','sdot '+(d.txerr>5?'dot-warn':on?'dot-on':'dot-off'));
     setText('hdr-desc',on?(d.AD?'AD active — injecting':'CAN active — monitoring'):'Waiting for CAN frames');
     updateInjectButtons(injecting);
@@ -1011,7 +1128,7 @@ async function poll(){
     try{renderWriteProbe(d.probe);}catch(e){}
     if(d.mux){for(let i=0;i<3;i++){setText('m'+i+'rx',d.mux[i].rx);setText('m'+i+'tx',d.mux[i].tx);const e=$('m'+i+'err');if(e){e.textContent=d.mux[i].err;e.style.color=d.mux[i].err>0?'var(--err)':'';}}}
     updateSniffIdToggle();
-    const hwSeg=$('hw-seg');if(hwSeg)updSeg(hwSeg,d.hw,'hw-btn');updateHW4(d.hw);
+    const hwSeg=$('hw-seg');if(hwSeg)updSeg(hwSeg,d.hw,'hw-btn');updateHW4(d.hw);updateProfileControls(d.hw,state.sp);
     const eprn=$('tgl-eprn');if(eprn&&typeof d.eprn!=='undefined')eprn.checked=d.eprn;
     if(!dashboardInitialLoaded){
       dashboardInitialLoaded=true;
@@ -1808,7 +1925,7 @@ async function peReset(){
 }
 
 dashboardPollTimers.push(setInterval(poll,2000));dashboardPollTimers.push(setInterval(pollLog,5000));dashboardPollTimers.push(setInterval(pollSniffer,1000));dashboardPollTimers.push(setInterval(pollPlugins,10000));dashboardPollTimers.push(setInterval(loadWifiStatus,10000));dashboardPollTimers.push(setInterval(loadApStatus,10000));
-initCardMinimizers();updateHW4(1);updateSniffIdToggle();poll();pollRec();peRender();
+initCardMinimizers();initSubsectionMinimizers();updateHW4(1);updateProfileControls(1,0);updateSniffIdToggle();poll();pollRec();peRender();
 </script>
 </body>
 </html>
