@@ -475,13 +475,10 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
 
   <div class="subsec" data-subkey="config-can-pins">
     <div class="subsec-head">
-      <div class="subsec-title">CAN Pins <span class="title-help" onclick="return toggleHelp(this,event)" data-help-target="can-pins-info" title="Set the ESP32 GPIO pins used for the CAN transceiver. Wrong values can disable CAN.">?</span></div>
+      <div class="subsec-title">CAN Pins <span class="title-help" onclick="return toggleHelp(this,event)" title="Set the ESP32 GPIO pins used for the CAN transceiver. Wrong values can disable CAN.">?</span></div>
       <div class="subsec-meta" id="can-pins-status">default</div>
     </div>
     <div class="subsec-body">
-      <div id="can-pins-info" class="info-box">
-        GPIO pins for the CAN transceiver (TWAI). Persisted in NVS so they survive OTA updates. Leave empty to use the firmware&#39;s compile-time defaults. <b>Wrong pins disable CAN</b> &mdash; recovery needs a USB re-flash. On most ESP32 boards GPIO 6&ndash;11 remain reserved for SPI flash.
-      </div>
       <div style="display:flex;gap:6px;align-items:center">
         <input class="sniff-input" id="can-tx" type="number" min="0" max="39" placeholder="TX GPIO" style="flex:1">
         <input class="sniff-input" id="can-rx" type="number" min="0" max="39" placeholder="RX GPIO" style="flex:1">
