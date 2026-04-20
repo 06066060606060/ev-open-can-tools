@@ -298,7 +298,6 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
     <div class="subsec-head">
       <div class="subsec-title">CAN Controller</div>
       <div class="subsec-meta" style="display:flex;align-items:center;gap:8px">
-        <span id="s-mcp-raw">MCP2515</span>
         <button onclick="resetStats()" style="font-size:10px;padding:2px 8px;border:1px solid var(--bd2);border-radius:5px;background:transparent;color:var(--tx3);cursor:pointer;font-family:inherit">Reset</button>
       </div>
     </div>
