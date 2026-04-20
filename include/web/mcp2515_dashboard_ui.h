@@ -514,6 +514,13 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
     <button class="sniff-btn" onclick="document.getElementById('backup-file').click()">Upload &amp; Restore</button>
     <input type="file" id="backup-file" accept=".json,application/json" style="display:none" onchange="importSettings(event)">
   </div>
+  <div class="setting-row" style="padding-top:12px;border-top:1px solid var(--bd)">
+    <div class="setting-info">
+      <div class="setting-name">Support <span class="title-help" onclick="return toggleHelp(this,event)" title="Collect a support summary and open a GitHub issue with the details prefilled.">?</span></div>
+      <div class="setting-desc">Copy a status summary before opening a GitHub issue</div>
+    </div>
+    <button class="sniff-btn" onclick="openSupport()">Open</button>
+  </div>
   <div id="backup-info" class="info-box" style="display:none">
     Exports AP credentials, WiFi Internet, CAN pins and beta channel as JSON. Useful before a full re-flash or when migrating to another device. <b>Passwords are included in clear text</b> &mdash; keep the file safe.
   </div>
@@ -664,6 +671,23 @@ hr{border:none;border-top:1px solid var(--bd);margin:16px}
   </div>
 </div>
 
+<div class="modal-backdrop" id="support-modal" onclick="supportBackdrop(event)">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="support-title" style="width:min(100%,560px)">
+    <div class="modal-title" id="support-title">Support</div>
+    <div class="modal-msg" style="margin-top:10px">
+      <textarea id="support-body" readonly style="width:100%;min-height:260px;resize:vertical;border:1px solid var(--bd2);border-radius:8px;background:var(--bg);color:var(--tx);padding:10px;font:inherit;line-height:1.5"></textarea>
+    </div>
+    <div class="modal-actions" style="justify-content:space-between;align-items:center">
+      <span id="support-status" style="font-size:11px;color:var(--tx3)"></span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+        <button class="sniff-btn" onclick="copySupport()">Copy</button>
+        <button class="sniff-btn modal-btn-primary" onclick="openSupportIssue()">Open GitHub Issue</button>
+        <button class="sniff-btn" onclick="closeSupport()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="foot" id="dash-foot">ev-open-can-tools &bull; loading...</div>
 <div class="foot" style="margin-top:4px">
   <a href="https://github.com/ev-open-can-tools/ev-open-can-tools" target="_blank" rel="noopener" style="color:var(--acc);text-decoration:none">GitHub</a>
@@ -707,6 +731,8 @@ let peLoadedPluginName='';
 let peTestPollTimer=null;
 let pluginDetailOpen={};
 let dashConfirmState=null;
+let supportIssueUrl='https://github.com/ev-open-can-tools/ev-open-can-tools/issues/new';
+let supportBodyText='';
 let dashboardPollTimers=[];
 let dashboardPollFailures=0;
 let dashboardStatusOk=false;
@@ -849,6 +875,10 @@ function dashConfirmBackdrop(ev){
   if(ev.target===$('confirm-modal'))dashConfirmResolve(false);
 }
 
+function supportBackdrop(ev){
+  if(ev.target===$('support-modal'))closeSupport();
+}
+
 function dashConfirm(message,title,okText,cancelText){
   if(dashConfirmState)dashConfirmResolve(false);
   return new Promise(resolve=>{
@@ -861,6 +891,91 @@ function dashConfirm(message,title,okText,cancelText){
     document.body.style.overflow='hidden';
     setTimeout(()=>{$('confirm-ok').focus();},0);
   });
+}
+
+function supportPluginSummary(){
+  return (installedPlugins||[]).filter(p=>p&&p.enabled).map(function(p){
+    return '#'+p.priority+' '+p.name+(p.rules?' ('+p.rules+' rules)':'');
+  }).join('\n')||'none';
+}
+
+function supportSettingsSummary(){
+  return [
+    'Hardware: '+(HW[state.hw]||'?'),
+    'Speed profile: '+((profileNamesForHw(state.hw)||[])[state.sp]||'—'),
+    'CAN status: '+($('s-can')?$('s-can').textContent:'—'),
+    'Injection: '+($('s-inj')?$('s-inj').textContent:'—'),
+    'AD: '+($('s-AD')?$('s-AD').textContent:'—'),
+    'CAN pins: '+($('can-pins-status')?$('can-pins-status').textContent:'—'),
+    'Firmware: '+($('fw-ver')?$('fw-ver').textContent:'—'),
+    'Beta channel: '+($('beta-tgl')&&$('beta-tgl').checked?'enabled':'disabled'),
+    'Auto-update: '+($('auto-upd-tgl')&&$('auto-upd-tgl').checked?'enabled':'disabled'),
+    'Dashboard logging: '+($('tgl-eprn')&&$('tgl-eprn').checked?'enabled':'disabled')
+  ].join('\n');
+}
+
+function buildSupportBody(){
+  const enabled=supportPluginSummary();
+  const body=[
+    'ev-open-can-tools support report',
+    '',
+    'Device',
+    'Hardware: '+(HW[state.hw]||'?'),
+    'Speed profile: '+((profileNamesForHw(state.hw)||[])[state.sp]||'—'),
+    'CAN status: '+($('s-can')?$('s-can').textContent:'—'),
+    'Injection: '+($('s-inj')?$('s-inj').textContent:'—'),
+    'AD: '+($('s-AD')?$('s-AD').textContent:'—'),
+    'CAN pins: '+($('can-pins-status')?$('can-pins-status').textContent:'—'),
+    'Firmware: '+($('fw-ver')?$('fw-ver').textContent:'—'),
+    '',
+    'Settings',
+    'Beta channel: '+($('beta-tgl')&&$('beta-tgl').checked?'enabled':'disabled'),
+    'Auto-update: '+($('auto-upd-tgl')&&$('auto-upd-tgl').checked?'enabled':'disabled'),
+    'Dashboard logging: '+($('tgl-eprn')&&$('tgl-eprn').checked?'enabled':'disabled'),
+    '',
+    'Enabled plugins',
+    enabled,
+    '',
+    'Notes',
+    ''
+  ].join('\n');
+  supportBodyText=body;
+  return body;
+}
+
+function openSupport(){
+  const el=$('support-body');
+  if(el)el.value=buildSupportBody();
+  const st=$('support-status');
+  if(st){st.textContent='Copy this text, then open a GitHub issue.';st.style.color='var(--tx3)';}
+  $('support-modal').style.display='flex';
+  document.body.style.overflow='hidden';
+  setTimeout(()=>{if(el)el.focus();el&&el.setSelectionRange(0,0);},0);
+}
+
+function closeSupport(){
+  $('support-modal').style.display='none';
+  document.body.style.overflow='';
+}
+
+async function copySupport(){
+  const el=$('support-body');
+  const text=el?el.value:buildSupportBody();
+  try{
+    await navigator.clipboard.writeText(text);
+    const st=$('support-status');if(st){st.textContent='Copied to clipboard';st.style.color='var(--ok)';}
+  }catch(e){
+    const st=$('support-status');if(st){st.textContent='Copy failed';st.style.color='var(--err)';}
+  }
+}
+
+function openSupportIssue(){
+  const body=buildSupportBody();
+  const title='Support request: ';
+  const url='https://github.com/ev-open-can-tools/ev-open-can-tools/issues/new?title='+encodeURIComponent(title)+'&body='+encodeURIComponent(body);
+  supportIssueUrl=url;
+  window.location.assign(url);
+  closeSupport();
 }
 
 document.addEventListener('keydown',e=>{
